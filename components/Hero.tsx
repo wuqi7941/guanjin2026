@@ -102,7 +102,7 @@ export function Hero() {
           </m.div>
 
           {/* 活字标题（逐字落下） */}
-          <m.h1 className="mt-8 mb-10" style={{ x: tx, y: ty }}>
+          <m.h1 className="mt-8 mb-10" style={{ x: tx, y: ty }} aria-label="观烬 EMBERS">
             <HeroWordmark />
           </m.h1>
 

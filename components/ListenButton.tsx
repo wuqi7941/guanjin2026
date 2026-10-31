@@ -11,6 +11,12 @@ export function ListenButton() {
   const [supported, setSupported] = useState(true)
   const queueRef = useRef<string[]>([])
   const idxRef = useRef(0)
+  /* 语音回调是异步的，闭包里读 state 会拿到旧值：改用 ref 同步一份 */
+  const stateRef = useRef<'idle' | 'playing' | 'paused'>('idle')
+  const setPhase = (s: 'idle' | 'playing' | 'paused') => {
+    stateRef.current = s
+    setState(s)
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
@@ -31,7 +37,7 @@ export function ListenButton() {
   const speakNext = () => {
     const synth = window.speechSynthesis
     if (idxRef.current >= queueRef.current.length) {
-      setState('idle')
+      setPhase('idle')
       idxRef.current = 0
       return
     }
@@ -42,7 +48,8 @@ export function ListenButton() {
     u.pitch = 0.98
     u.onend = () => {
       idxRef.current += 1
-      if (state !== 'paused') speakNext()
+      /* 用 ref 判断：cancel() 触发的 onend 闭包里 state 是旧的 */
+      if (stateRef.current === 'playing') speakNext()
     }
     synth.speak(u)
   }
@@ -56,7 +63,7 @@ export function ListenButton() {
       .map((s) => s.trim())
       .filter((s) => s.length > 1)
     idxRef.current = 0
-    setState('playing')
+    setPhase('playing')
     try {
       window.speechSynthesis.cancel()
     } catch {
@@ -73,10 +80,10 @@ export function ListenButton() {
     }
     if (state === 'playing') {
       synth.pause()
-      setState('paused')
+      setPhase('paused')
     } else {
       synth.resume()
-      setState('playing')
+      setPhase('playing')
     }
   }
 

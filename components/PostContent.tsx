@@ -32,6 +32,8 @@ interface PostContentProps {
   post: Post
   prev?: PostMeta | null
   next?: PostMeta | null
+  /* 全站第几篇（从 1 起）：右上角那个 N° 不再写死 */
+  num?: number
 }
 
 interface TocItem {
@@ -84,7 +86,7 @@ function extractToc(content: string): TocItem[] {
   return items
 }
 
-export function PostContent({ post, prev, next }: PostContentProps) {
+export function PostContent({ post, prev, next, num }: PostContentProps) {
   const barRef = useRef<HTMLDivElement>(null)
   const [printDate, setPrintDate] = useState('')
   const lastSaveRef = useRef(0)
@@ -223,7 +225,7 @@ export function PostContent({ post, prev, next }: PostContentProps) {
               bottom: 0,
             }}
           >
-            N°01
+            N°{String(num ?? 1).padStart(2, '0')}
           </span>
 
           {/* 编辑栏目标签：杂志页眉（分类 · 手记） */}

@@ -69,6 +69,8 @@ export function PageTransition() {
       if (a.hasAttribute('download')) return
       const href = a.getAttribute('href')
       if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return
+      /* 静态资源不是「页面」：/feed.xml、*.json、*.pdf 等交给浏览器，别套墨染再 router.push */
+      if (/\/(feed\.xml|sitemap\.xml|robots\.txt)$/i.test(href) || /\.(xml|json|txt|pdf|png|jpe?g|webp|svg|zip)$/i.test(href)) return
 
       let url: URL
       try {

@@ -1,7 +1,20 @@
 import { Post, PostMeta, PostCardData } from '@/types/post'
 import postsData from './posts.json'
 
-const posts: Post[] = postsData as Post[]
+/* posts.json 里大部分篇目没有 wordCount 字段（历史数据），
+   这里按正文汉字数补一个，统计与卡片才准。有值的仍然以数据为准。
+   wordCount 在类型上是展示用的字符串，所以按「万字 / 千字」出。 */
+function withWordCount(list: Post[]): Post[] {
+  return list.map((p) => {
+    if (p.wordCount) return p
+    const chars = (p.content ?? '').replace(/[\s#>*`\-|]/g, '').length
+    const shown =
+      chars >= 10000 ? `${(chars / 10000).toFixed(1)} 万字` : `${Math.max(1, Math.round(chars / 100) / 10)} 千字`
+    return { ...p, wordCount: shown }
+  })
+}
+
+const posts: Post[] = withWordCount(postsData as Post[])
 
 /* 排序规则：小说《攒一架琴》固定第一；「得意」只置顶一篇（最新那篇），
    其余得意回到时间序列——全置顶会让 7 月的文章压在 10 月前面，日期跳来跳去。 */

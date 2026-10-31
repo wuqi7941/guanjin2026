@@ -28,6 +28,7 @@ export function QuickNav() {
 
   useEffect(() => {
     const disarm = () => {
+      ;(window as unknown as Record<string, unknown>).__embersQuick = false
       armedRef.current = false
       setArmed(false)
       clearTimeout(timer.current)
@@ -42,6 +43,7 @@ export function QuickNav() {
         if (e.key.toLowerCase() === 'g') {
           armedRef.current = true
           setArmed(true)
+          ;(window as unknown as Record<string, unknown>).__embersQuick = true
           clearTimeout(timer.current)
           timer.current = setTimeout(disarm, ARM_MS)
         }

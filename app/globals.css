@@ -278,6 +278,10 @@ button,
 
 /* ============ TOKENS — 余烬 × 日式侘寂·纸感 ============ */
 :root {
+  /* 全站等宽元信息用的字体变量。GeistMono 注入的是 --font-geist-mono，
+     而 41 处规则写的是 var(--font-mono)——这里补上定义，否则整条声明失效、回退宋体。 */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
   /* 夜墨：深炭底，纸白字，朱印为唯一强调 */
   --canvas: #17130e;
   --surface-1: #1e1913;
@@ -305,8 +309,8 @@ button,
   --radius-md: 3px;
   --radius-lg: 4px;
   --radius-xl: 6px;
-  --display: "Cormorant Garamond", "Noto Serif SC", "Songti SC", "STSong", Georgia, serif;
-  --serif-body: "Noto Serif SC", "Songti SC", "STSong", Georgia, "Times New Roman", serif;
+  --display: "Cormorant Garamond", "Songti SC", "STSong", "SimSun", Georgia, serif;
+  --serif-body: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", Georgia, serif;
   --grain-opacity: 0.05;
 }
 
@@ -338,8 +342,8 @@ button,
   --radius-md: 3px;
   --radius-lg: 4px;
   --radius-xl: 6px;
-  --display: "Cormorant Garamond", "Noto Serif SC", "Songti SC", "STSong", Georgia, serif;
-  --serif-body: "Noto Serif SC", "Songti SC", "STSong", Georgia, "Times New Roman", serif;
+  --display: "Cormorant Garamond", "Songti SC", "STSong", "SimSun", Georgia, serif;
+  --serif-body: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", Georgia, serif;
   --grain-opacity: 0.06;
 }
 
@@ -1526,7 +1530,6 @@ body {
 
 /* 手机端：避免过宽内边距挤压内容 */
 @media (max-width: 639px) {
-  .px-8 { padding-left: 1.25rem; padding-right: 1.25rem; }
 }
 /* ================================================================
    纸本杂志 2.0 · 条目卡与分区栏（2026-10-25）
@@ -4295,4 +4298,9 @@ html.dark .prose-custom a:hover {
   right: 0;
   top: -8px;
   height: 8px;
+}
+/* Geist 的 CSS 变量注入在 <body> 上，所以真正的等宽字体栈要在这里再声明一次；
+   写在 :root 里会因为拿不到 --font-geist-mono 而整条失效。 */
+body {
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }

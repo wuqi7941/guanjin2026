@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: SITE.name,
-    description: '观烬的个人博客——技术、设计与思考的碎片记录。',
+    description: SITE.description,
     type: 'website',
     locale: 'zh_CN',
     siteName: SITE.name,
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: SITE.name,
-    description: '观烬的个人博客——技术、设计与思考的碎片记录。',
+    description: SITE.description,
     images: ['/og.png'],
   },
 }

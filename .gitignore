@@ -11,7 +11,6 @@ dist-plain-backup/
 
 # 构建产物与备份（体积大、可再生成）
 .backup/
-public/og/
 
 # 日志
 *.log

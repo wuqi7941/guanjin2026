@@ -15,7 +15,7 @@ const EMBERS_Y = [1, -2, 1.5, -1, 2, -1.5]
 export function HeroWordmark() {
   return (
     <>
-      <span className="font-display block text-[11vw] sm:text-8xl lg:text-[7rem] font-bold leading-[1.02] text-[var(--ink)]">
+      <span aria-hidden className="font-display block text-[11vw] sm:text-8xl lg:text-[7rem] font-bold leading-[1.02] text-[var(--ink)]">
         {NAME.split('').map((ch, i) => (
           <m.span
             key={i}
@@ -28,7 +28,7 @@ export function HeroWordmark() {
           </m.span>
         ))}
       </span>
-      <span className="hero-ember block mt-3 text-lg sm:text-2xl lg:text-[2.4rem] font-light tracking-[0.34em] leading-none opacity-80">
+      <span aria-hidden className="hero-ember block mt-3 text-lg sm:text-2xl lg:text-[2.4rem] font-light tracking-[0.34em] leading-none opacity-80">
         {EMBERS_WORD.split('').map((ch, i) => (
           <m.span
             key={i}

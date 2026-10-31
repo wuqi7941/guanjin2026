@@ -58,7 +58,7 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
     <main id="main-content" className="relative min-h-screen">
       <AuroraBackground />
       <Navbar />
-      <PostContent post={post} prev={prev} next={next} />
+      <PostContent post={post} prev={prev} next={next} num={posts.length - index} />
       <Footer />
     </main>
   )

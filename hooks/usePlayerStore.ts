@@ -16,7 +16,8 @@ function parseLrc(txt: string): LrcLine[] {
   for (const line of txt.split(/\r?\n/)) {
     const m = line.match(/\[(\d+):(\d+)(?:\.(\d+))?\](.*)/)
     if (!m) continue
-    const t = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + parseInt(m[3] || '0', 10) / 100
+    const frac = m[3] || ''
+    const t = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + (frac ? parseInt(frac, 10) / Math.pow(10, frac.length) : 0)
     const text = m[4].trim()
     if (text) out.push({ t, txt: text })
   }
@@ -249,13 +250,22 @@ export function usePlayerStore() {
           const track = PLAYLIST[restoreIdx]
           if (a) {
             srcTierRef.current = 1
+            a.preload = 'none'
             a.src = TRACK_URL(track.id)
             a.volume = volRef.current
-            a.load()
-            try {
-              a.currentTime = o.t || 0
-            } catch {
-              /* ignore */
+            /* 不立刻 load()：用户还没点播放，不该为一个后台恢复去拉流。
+               位置要等 metadata 到了再 seek，否则会被忽略。 */
+            const savedTime = o.t || 0
+            if (savedTime > 0) {
+              const onMeta = () => {
+                try {
+                  a.currentTime = savedTime
+                } catch {
+                  /* ignore */
+                }
+                a.removeEventListener('loadedmetadata', onMeta)
+              }
+              a.addEventListener('loadedmetadata', onMeta)
             }
           }
           fetchMeta(restoreIdx)
