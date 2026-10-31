@@ -4237,12 +4237,8 @@ html.dark .prose-custom a:hover {
   font-variant-numeric: tabular-nums;
 }
 
-/* 移动端：底部播放器给安全区留位置 */
-@media (max-width: 639px) {
-  .mp-bar {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-}
+/* 播放器的安全区由 .mp-bar 的 bottom: calc(... + env(...)) 统一处理，
+   这里不再重复加 padding——重复会把整条顶上去 */
 
 /* 选中态过渡统一 */
 ::selection {
