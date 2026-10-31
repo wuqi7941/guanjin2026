@@ -1,0 +1,97 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
+import { ArrowUp } from 'lucide-react'
+import { useScroll } from '@/hooks/useScroll'
+
+const STORE_KEY = 'embers-scroll-pos'
+
+/* 阅读体验：滚动位置记忆（返回不丢位置）+ 回顶按钮 + 滚动中性能标记（.scrolling） */
+export function ScrollManager() {
+  const pathname = usePathname()
+  const [show, setShow] = useState(false)
+  const stopTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  /* 滚动状态：滚动中给 <html> 加 .scrolling（关掉高成本 backdrop-filter），静止 300ms 后移除；同时更新回顶按钮 */
+  useScroll((y) => {
+    document.documentElement.classList.add('scrolling')
+    if (stopTimer.current) clearTimeout(stopTimer.current)
+    stopTimer.current = setTimeout(() => {
+      document.documentElement.classList.remove('scrolling')
+    }, 300)
+    const pass = y > 320
+    setShow((s) => (s === pass ? s : pass))
+  })
+
+  /* 恢复本页上次滚动位置 */
+  useEffect(() => {
+    const saved = sessionStorage.getItem(STORE_KEY)
+    if (saved) {
+      try {
+        const map: Record<string, number> = JSON.parse(saved)
+        const y = map[pathname]
+        if (typeof y === 'number' && y > 0) {
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: y, behavior: 'auto' })
+          })
+        }
+        delete map[pathname]
+        sessionStorage.setItem(STORE_KEY, JSON.stringify(map))
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [pathname])
+
+  /* 离开页面前把位置存进去，供返回时恢复。
+     2026-10-25：站内跳转改成客户端路由后不再触发 pagehide，
+     所以另外在「点击站内链接」时先存一次当前位置（捕获阶段，早于路由切换）。 */
+  useEffect(() => {
+    const save = () => {
+      try {
+        const saved = sessionStorage.getItem(STORE_KEY)
+        const map: Record<string, number> = saved ? JSON.parse(saved) : {}
+        map[pathname] = window.scrollY
+        sessionStorage.setItem(STORE_KEY, JSON.stringify(map))
+      } catch {
+        /* ignore */
+      }
+    }
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as HTMLElement | null)?.closest('a')
+      if (!a) return
+      if (a.target && a.target !== '_self') return
+      if (a.hasAttribute('download')) return
+      const href = a.getAttribute('href')
+      if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return
+      try {
+        if (new URL(a.href).origin !== location.origin) return
+      } catch {
+        return
+      }
+      save()
+    }
+    document.addEventListener('click', onClick, true)
+    window.addEventListener('pagehide', save)
+    return () => {
+      document.removeEventListener('click', onClick, true)
+      window.removeEventListener('pagehide', save)
+    }
+  }, [pathname])
+
+  return (
+    <button
+      type="button"
+      aria-label="回到顶部"
+      aria-hidden={!show}
+      tabIndex={show ? 0 : -1}
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      className={`back-top-btn fixed bottom-24 right-6 z-[75] grid place-items-center w-11 h-11 rounded-md border border-[var(--hairline-strong)] bg-[var(--surface-2)] text-[var(--ink-muted)] shadow-lg transition-all duration-300 hover:text-[var(--accent)] hover:border-[var(--accent)] hover:-translate-y-1 active:translate-y-0 ${
+        show ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+      }`}
+    >
+      <ArrowUp className="w-4.5 h-4.5" />
+    </button>
+  )
+}

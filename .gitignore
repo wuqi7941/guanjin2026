@@ -1,0 +1,39 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# next.js
+.next/
+out/
+dist/
+dist-plain-backup/
+
+# 构建产物与备份（体积大、可再生成）
+.backup/
+public/og/
+
+# 日志
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# 系统
+.DS_Store
+Thumbs.db
+*.tsbuildinfo
+next-env.d.ts
+
+# 环境变量
+.env
+.env.local
+.env*.local
+
+# 编辑器
+.vscode/
+.idea/
+
+# 内容备份（含旧稿，不入库）
+lib/*.bak*
+lib/*.backup*
+lib/*.pre-*
