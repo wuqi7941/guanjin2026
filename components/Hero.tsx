@@ -1,6 +1,6 @@
 'use client'
 
-import { EASE } from '@/lib/motion'
+import { EASE, EASE_DROP } from '@/lib/motion'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { m, AnimatePresence, useTransform } from 'framer-motion'
 import { Typewriter } from './Typewriter'
@@ -94,11 +94,15 @@ export function Hero() {
             transition={{ duration: 0.8, ease: EASE }}
           >
             <span className="inline-flex items-center gap-3 px-0 text-xs font-mono tracking-[0.28em] uppercase text-[var(--ink-subtle)]">
-              <span
+              {/* 落印：等标题与落款都停稳，这枚印才砸下来——快落、硬停，不弹 */}
+              <m.span
                 className={'seal ' + (sealLit ? 'is-lit' : '')}
                 role="button"
                 tabIndex={-1}
                 aria-label="余印，长按试试"
+                initial={{ opacity: 0, y: -16, scale: 1.14 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.46, delay: 1.05, ease: EASE_DROP }}
                 onPointerDown={onSealDown}
                 onPointerUp={onSealUp}
                 onPointerLeave={onSealUp}
@@ -106,7 +110,7 @@ export function Hero() {
                 onContextMenu={(e) => e.preventDefault()}
               >
                 余
-              </span>
+              </m.span>
               余烬 EMBERS · 残火未冷
             </span>
           </m.div>

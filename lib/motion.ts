@@ -7,3 +7,5 @@ export const EASE_QUIET: [number, number, number, number] = [0.16, 1, 0.3, 1]
 export const EASE_IN: [number, number, number, number] = [0.55, 0, 0.55, 0.2]
 /* 入场（ease-out 方向）：墨染揭开 */
 export const EASE_OUT: [number, number, number, number] = [0.4, 0, 0.2, 1]
+/* 落印：起手快、落点硬，不弹（弹性曲线会廉价，见 impeccable/bolder） */
+export const EASE_DROP: [number, number, number, number] = [0.23, 0.92, 0.18, 1]

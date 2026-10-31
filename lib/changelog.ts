@@ -10,6 +10,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-11-01',
+    title: '首页底下那堆火，开始呼吸了',
+    items: [
+      '进门时，那枚「余」字朱印会从上面落下来——快落、硬停，不带一点弹跳的廉价感',
+      '首屏底部多了一团极慢的暖光，二十六秒一次呼吸；盯久了会觉得那块屏幕是暖的',
+      '毛笔竖线和炉火被调成同一个呼吸频率，一屏只留一种慢——不再各动各的',
+      '关掉动效的读者不会看到这些：火是静的，印直接在那儿',
+    ],
+  },
+  {
     date: '2026-10-31',
     title: '歌单里那些只剩三十秒的歌，又能整首听完了',
     items: [
@@ -228,4 +238,4 @@ export const CHANGELOG: ChangelogEntry[] = [
 
 /* 显式版本号：同一天可以有多条记录，靠它区分「看过哪一版」。
    加新条目时手动改这里（消费方是 ChangelogPanel 的首次来访提示）。 */
-export const CHANGELOG_VERSION = '2026-10-31-music'
+export const CHANGELOG_VERSION = '2026-11-01-hero'

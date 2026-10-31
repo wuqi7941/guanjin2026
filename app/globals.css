@@ -970,18 +970,19 @@ html.scrolling .glass-nav {
   width: 3px;
   color: var(--accent);
   pointer-events: none;
-  animation: brush-breathe 4.5s ease-in-out infinite;
+  /* 4.5s 太快，和炉火、光标抢呼吸；放到 9s、幅度收小，一屏只留一种慢节奏 */
+  animation: brush-breathe 9s ease-in-out infinite;
 }
 
 @keyframes brush-breathe {
   0%,
   100% {
-    opacity: 0.75;
+    opacity: 0.7;
     transform: scaleY(1);
   }
   50% {
-    opacity: 1;
-    transform: scaleY(1.015);
+    opacity: 0.95;
+    transform: scaleY(1.008);
   }
 }
 
@@ -4404,4 +4405,66 @@ li:focus-within > .egg-hint {
   backdrop-filter: blur(1px);
   opacity: 0.55;
   pointer-events: none;
+}
+/* ================================================================
+   首屏事件（2026-11-01 凌晨）
+   克制版：不加新装置，只让已经在的东西活起来。
+   ================================================================ */
+
+/* 炉膛里那团没熄的火：极慢呼吸。
+   只动 transform / opacity；26s 一轮——比呼吸慢，比睡着快，
+   盯久了会觉得这块像素是暖的。z-index -1 压在内容下，不碰任何布局。 */
+.hero-poster::after {
+  /* 呼吸的上下限做成变量：亮色主题要淡得多，而 animation 里的 opacity
+     优先级高于普通声明，直接覆盖无效——只能从变量这一个口子调 */
+  --breath-lo: 0.4;
+  --breath-hi: 0.62;
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -22%;
+  z-index: -1;
+  width: min(130vw, 1500px);
+  height: 62vh;
+  pointer-events: none;
+  background: radial-gradient(
+    50% 62% at 50% 100%,
+    color-mix(in srgb, var(--accent) 12%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 5%, transparent) 38%,
+    transparent 72%
+  );
+  filter: blur(48px);
+  transform: translateX(-50%) scale(1);
+  transform-origin: center bottom;
+  opacity: var(--breath-lo);
+  animation: ember-breath 26s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes ember-breath {
+  0%,
+  100% {
+    transform: translateX(-50%) scale(1);
+    opacity: var(--breath-lo);
+  }
+  42% {
+    transform: translateX(-50%) scale(1.06);
+    opacity: var(--breath-hi);
+  }
+}
+
+/* 宣纸主题：火要淡得多，否则像纸被烤焦了一块 */
+.light .hero-poster::after {
+  --breath-lo: 0.14;
+  --breath-hi: 0.26;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-poster::after {
+    animation: none;
+    opacity: 0.34;
+  }
+  .light .hero-poster::after {
+    opacity: 0.2;
+  }
 }
