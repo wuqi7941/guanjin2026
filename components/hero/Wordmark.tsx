@@ -15,7 +15,7 @@ const EMBERS_Y = [1, -2, 1.5, -1, 2, -1.5]
 export function HeroWordmark() {
   return (
     <>
-      <span aria-hidden className="font-display block text-[11vw] sm:text-8xl lg:text-[7rem] font-bold leading-[1.02] text-[var(--ink)]">
+      <span aria-hidden className="font-display block text-[11vw] sm:text-8xl lg:text-[7rem] font-semibold leading-[1.02] text-[var(--ink)]">
         {NAME.split('').map((ch, i) => (
           <m.span
             key={i}

@@ -36,3 +36,6 @@ next-env.d.ts
 lib/*.bak*
 lib/*.backup*
 lib/*.pre-*
+
+# wrangler 本地状态
+.wrangler/

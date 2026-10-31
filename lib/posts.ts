@@ -17,16 +17,14 @@ function withWordCount(list: Post[]): Post[] {
 const posts: Post[] = withWordCount(postsData as Post[])
 
 /* 排序规则：小说《攒一架琴》固定第一；「得意」只置顶一篇（最新那篇），
-   其余得意回到时间序列——全置顶会让 7 月的文章压在 10 月前面，日期跳来跳去。 */
+   其余得意回到时间序列——全置顶会让 7 月的文章压在 10 月前面，日期跳来跳去。
+   次级键用 slug：同日多篇（数据里一天最多 6 篇）时顺序才确定，prev/next 不抖。 */
 export function sortPosts(list: Post[]): Post[] {
   const isNovel = (p: Post) => p.slug === 'novel-01'
+  const byDate = (a: Post, b: Post) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug)
   const novel = list.filter(isNovel)
-  const lead = list
-    .filter((p) => p.featured && !isNovel(p))
-    .sort((a, b) => b.date.localeCompare(a.date))[0]
-  const rest = list
-    .filter((p) => !isNovel(p) && p !== lead)
-    .sort((a, b) => b.date.localeCompare(a.date))
+  const lead = list.filter((p) => p.featured && !isNovel(p)).sort(byDate)[0]
+  const rest = list.filter((p) => !isNovel(p) && p !== lead).sort(byDate)
   return [...novel, ...(lead ? [lead] : []), ...rest]
 }
 

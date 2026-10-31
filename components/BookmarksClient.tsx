@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { BookmarkX } from 'lucide-react'
 import { clearBookmarks, getBookmarks } from '@/lib/reading'
@@ -8,6 +8,45 @@ import { ReadMap } from './ReadMap'
 import type { PostCardData } from '@/types/post'
 
 /* 收藏夹：本地 slug 列表 → 与构建时的文章元数据对照还原 */
+
+/* 清空要两下：第一下变「确认清空？」，3 秒没动静就缩回去。
+   收藏只存本地，删了没有任何恢复手段，误触一次就是全没。 */
+function ClearBookmarksButton({ onClear }: { onClear: () => void }) {
+  const [armed, setArmed] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  useEffect(() => () => clearTimeout(timer.current), [])
+
+  const click = () => {
+    if (!armed) {
+      setArmed(true)
+      timer.current = setTimeout(() => setArmed(false), 3000)
+      return
+    }
+    clearTimeout(timer.current)
+    setArmed(false)
+    onClear()
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={click}
+      onBlur={() => {
+        clearTimeout(timer.current)
+        setArmed(false)
+      }}
+      className={
+        'inline-flex items-center gap-1.5 text-xs font-mono tracking-[0.14em] transition-colors ' +
+        (armed ? 'text-[var(--accent)]' : 'text-[var(--ink-tertiary)] hover:text-[var(--accent)]')
+      }
+    >
+      <BookmarkX className="w-3.5 h-3.5" />
+      {armed ? '再点一下确认清空' : '清空收藏'}
+    </button>
+  )
+}
+
 export function BookmarksClient({ all }: { all: PostCardData[] }) {
   const [slugs, setSlugs] = useState<string[]>([])
   const [mounted, setMounted] = useState(false)
@@ -50,17 +89,12 @@ export function BookmarksClient({ all }: { all: PostCardData[] }) {
     <div>
       <div className="flex items-center justify-between mb-6">
         <span className="exhibit-meta tabular-nums">{items.length} 篇</span>
-        <button
-          type="button"
-          onClick={() => {
+        <ClearBookmarksButton
+          onClear={() => {
             clearBookmarks()
             setSlugs([])
           }}
-          className="inline-flex items-center gap-1.5 text-xs font-mono tracking-[0.14em] text-[var(--ink-tertiary)] hover:text-[var(--accent)] transition-colors"
-        >
-          <BookmarkX className="w-3.5 h-3.5" />
-          清空收藏
-        </button>
+        />
       </div>
 
       <ul className="divide-y divide-[var(--hairline)] border-t border-[var(--hairline)]">

@@ -3,6 +3,7 @@ import { Navbar } from '@/components/Navbar'
 import { Footer } from '@/components/Footer'
 import { PostContent } from '@/components/PostContent'
 import { AuroraBackground } from '@/components/AuroraBackground'
+import { SITE } from '@/lib/site'
 import { getAllPosts, getPostBySlug } from '@/lib/posts'
 
 interface BlogPostPageProps {
@@ -25,12 +26,18 @@ export function generateMetadata({ params }: BlogPostPageProps) {
   return {
     title: `${post.title} — 余烬 EMBERS`,
     description: post.excerpt,
+    alternates: {
+      canonical: `${SITE.url}/blog/${post.slug}/`,
+    },
     openGraph: {
       title: post.title,
       description: post.excerpt,
+      url: `${SITE.url}/blog/${post.slug}/`,
       type: 'article',
+      publishedTime: post.date,
+      authors: [SITE.author],
       locale: 'zh_CN',
-      siteName: '余烬 EMBERS',
+      siteName: SITE.name,
       images: [{ url: og, width: 1200, height: 630, alt: post.title }],
     },
     twitter: {
@@ -58,6 +65,23 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
     <main id="main-content" className="relative min-h-screen">
       <AuroraBackground />
       <Navbar />
+      {/* BlogPosting 结构化数据：搜索引擎的富摘要（作者/日期/标题）从这里来 */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BlogPosting',
+            headline: post.title,
+            description: post.excerpt,
+            datePublished: post.date,
+            author: { '@type': 'Person', name: SITE.author, url: `${SITE.url}/about/` },
+            image: `${SITE.url}/og/${post.slug}.png`,
+            mainEntityOfPage: `${SITE.url}/blog/${post.slug}/`,
+            keywords: (post.tags ?? []).join(', '),
+          }),
+        }}
+      />
       <PostContent post={post} prev={prev} next={next} num={posts.length - index} />
       <Footer />
     </main>

@@ -5,6 +5,10 @@ export const dynamic = 'force-static'
 
 export function GET() {
   return new Response(JSON.stringify(getDailyLines()), {
-    headers: { 'content-type': 'application/json; charset=utf-8' },
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      /* 句子表随构建更新，CDN/浏览器缓存 1 小时 */
+      'cache-control': 'public, max-age=3600',
+    },
   })
 }

@@ -56,7 +56,7 @@ export function Footer() {
             {[
               { href: '/', label: '首页', idx: '01' },
               { href: '/blog/', label: '文章', idx: '02' },
-              { href: '/about', label: '关于', idx: '03' },
+              { href: '/about/', label: '关于', idx: '03' },
               { href: '/timeline/', label: '年轮', idx: '04' },
               { href: '/contact/', label: '联系', idx: '05' },
               { href: '/tags/', label: '星图', idx: '06' },

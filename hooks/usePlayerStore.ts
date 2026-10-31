@@ -13,16 +13,50 @@ export interface LrcLine {
 
 function parseLrc(txt: string): LrcLine[] {
   const out: LrcLine[] = []
+  const re = /\[(\d+):(\d+)(?:\.(\d+))?\]/g
   for (const line of txt.split(/\r?\n/)) {
-    const m = line.match(/\[(\d+):(\d+)(?:\.(\d+))?\](.*)/)
-    if (!m) continue
-    const frac = m[3] || ''
-    const t = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + (frac ? parseInt(frac, 10) / Math.pow(10, frac.length) : 0)
-    const text = m[4].trim()
-    if (text) out.push({ t, txt: text })
+    /* 一行可以挂多个时间戳（[00:01][00:05]同一段词）——逐个摘出来，词共用 */
+    re.lastIndex = 0
+    const stamps: RegExpExecArray[] = []
+    let m: RegExpExecArray | null
+    while ((m = re.exec(line))) stamps.push(m)
+    if (!stamps.length) continue
+    const text = line.replace(re, '').trim()
+    if (!text) continue
+    for (const mm of stamps) {
+      const frac = mm[3] || ''
+      /* 毫秒位按实际位数折算：两位是厘秒 /100，三位是毫秒 /1000 */
+      const t =
+        parseInt(mm[1], 10) * 60 + parseInt(mm[2], 10) + (frac ? parseInt(frac, 10) / Math.pow(10, frac.length) : 0)
+      out.push({ t, txt: text })
+    }
   }
   out.sort((a, b) => a.t - b.t)
   return out
+}
+
+/* 当前应高亮的歌词行：从上次结果（hint）附近找起，时间回退（seek）时二分。
+   timeupdate 每秒 ~4 次，别每次都从 0 线扫 88 行。 */
+function findActiveLrc(lrc: LrcLine[], t: number, hint: number): number {
+  const n = lrc.length
+  if (!n || t < lrc[0].t) return -1
+  if (hint >= 0 && hint < n) {
+    const hi = hint + 1 < n ? lrc[hint + 1].t : Infinity
+    if (lrc[hint].t <= t && t < hi) return hint
+  }
+  let lo = 0
+  let hi = n - 1
+  let ans = -1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (lrc[mid].t <= t) {
+      ans = mid
+      lo = mid + 1
+    } else {
+      hi = mid - 1
+    }
+  }
+  return ans
 }
 
 export function fmt(s: number) {
@@ -61,8 +95,9 @@ export function usePlayerStore() {
   const lrcCacheRef = useRef<Record<string, string>>({})
   const seekBarRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  /* 音源层级：0=网易官方外链（免费完整）/ 1=injahow 备用 / 2=gdstudio VIP 完整（JSONP） */
-  const srcTierRef = useRef(0)
+  /* 音源层级：1=injahow 备用链（首选，实测 87/88 可播）/ 2=网易官方外链（兜底，34/88）。
+     play() 一律先 inj，失败或时长过短（试听）再退网易。 */
+  const srcTierRef = useRef(1)
   /* 暗语「挑不出来」：连续切歌计数 */
   const nextBurstRef = useRef({ t: 0, n: 0 })
 
@@ -377,11 +412,7 @@ export function usePlayerStore() {
       const a = e.currentTarget
       setTime(a.currentTime)
       if (isFinite(a.duration)) setDuration(a.duration)
-      let la = -1
-      for (let k = 0; k < lrcRef.current.length; k++) {
-        if (a.currentTime >= lrcRef.current[k].t) la = k
-        else break
-      }
+      const la = findActiveLrc(lrcRef.current, a.currentTime, activeLrcRef.current)
       if (la !== activeLrcRef.current) {
         activeLrcRef.current = la
         setActiveLrc(la)

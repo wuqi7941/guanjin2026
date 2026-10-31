@@ -34,6 +34,18 @@ export function MusicPlayer() {
     setFull(true)
   }
 
+  /* Esc 关面板：仅面板打开时监听；沉浸歌词开着时由它自己处理 Esc，这里让路 */
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (document.querySelector('.mp-full')) return
+      setOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, setOpen])
+
   return (
     <>
       <AnimatePresence>

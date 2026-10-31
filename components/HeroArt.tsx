@@ -1,7 +1,7 @@
 'use client'
 
 import { EASE } from '@/lib/motion'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, m, useReducedMotion } from 'framer-motion'
@@ -40,13 +40,23 @@ export function HeroArt() {
   /* 离开视口：停动画，回来恢复 */
   const { ref: rootRef, inView } = useInView<HTMLDivElement>({ once: false, threshold: 0.05 })
 
-  /* 全屏打开时锁滚动 */
+  /* 全屏打开时锁滚动 + Esc 关闭 + 焦点进出 dialog */
+  const closeRef = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     if (!fullOpen) return
+    const opener = document.activeElement as HTMLElement | null
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    const t = window.setTimeout(() => closeRef.current?.focus(), 50)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFullOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
     return () => {
       document.body.style.overflow = prev
+      window.clearTimeout(t)
+      document.removeEventListener('keydown', onKey)
+      opener?.focus?.()
     }
   }, [fullOpen])
 
@@ -102,6 +112,7 @@ export function HeroArt() {
                 className="fixed inset-0 z-[86] embers-bg flex flex-col items-center justify-center px-4 sm:px-8"
               >
                 <button
+                  ref={closeRef}
                   type="button"
                   onClick={() => setFullOpen(false)}
                   aria-label="关闭全屏钢琴"

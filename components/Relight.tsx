@@ -1,17 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 /* 404 小彩蛋：碰一碰这块炭 */
 export function Relight() {
   const [lit, setLit] = useState(false)
   const [touched, setTouched] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const light = () => {
     setTouched(true)
     setLit(true)
-    window.setTimeout(() => setLit(false), 1800)
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => setLit(false), 1800)
   }
+
+  useEffect(() => () => clearTimeout(timer.current), [])
 
   return (
     <button

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { m } from 'framer-motion'
 import { X, Play, Pause, SkipBack, SkipForward } from 'lucide-react'
 import type { Track } from '@/lib/playlist'
@@ -32,6 +32,18 @@ export function MpFullscreen({
 }: MpFullscreenProps) {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+
+  /* 焦点：dialog 打开把焦点交给关闭钮，关闭时还原到触发元素——读屏与键盘才不会掉进虚空 */
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    closeRef.current?.focus()
+    return () => opener?.focus?.()
+  }, [])
+
+  /* 拖动中的本地进度：move 只走 UI，松手才 seek（与面板进度条同一套手感） */
+  const [dragPct, setDragPct] = useState<number | null>(null)
+  const draggingRef = useRef(false)
 
   /* Esc 关闭 + 锁页面滚动 */
   useEffect(() => {
@@ -59,14 +71,7 @@ export function MpFullscreen({
     })
   }, [activeLrc])
 
-  const seekAt = (clientX: number) => {
-    const el = barRef.current
-    if (!el) return
-    const r = el.getBoundingClientRect()
-    if (!r.width) return
-    onSeekTo(Math.max(0, Math.min(1, (clientX - r.left) / r.width)))
-  }
-
+  /* 点任意一句跳转：click 直接用行的时间，无需经过位置反算 */
   return (
     <m.div
       className="mp-full"
@@ -81,7 +86,7 @@ export function MpFullscreen({
       <div className="mp-full-inner">
         <header className="mp-full-head">
           <span className="font-mono text-[10px] tracking-[0.3em] uppercase">EMBERS · 歌词</span>
-          <button type="button" onClick={onClose} className="mp-full-close" aria-label="退出沉浸歌词">
+          <button ref={closeRef} type="button" onClick={onClose} className="mp-full-close" aria-label="退出沉浸歌词">
             <X className="w-4 h-4" />
           </button>
         </header>
@@ -94,7 +99,6 @@ export function MpFullscreen({
                   type="button"
                   key={`${l.t}-${i}`}
                   data-fs-active={i === activeLrc ? 'true' : undefined}
-                  data-t={l.t}
                   onClick={() => onSeekToTime(l.t)}
                   className={`mp-full-line ${i === activeLrc ? 'is-active' : ''}`}
                 >
@@ -125,19 +129,35 @@ export function MpFullscreen({
             className="mp-full-bar"
             role="slider"
             aria-label="播放进度"
-            aria-valuenow={Math.round(pct)}
+            aria-valuenow={Math.round(dragPct ?? pct)}
             aria-valuemin={0}
             aria-valuemax={100}
             onPointerDown={(e) => {
+              draggingRef.current = true
               ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
-              seekAt(e.clientX)
+              const r = barRef.current?.getBoundingClientRect()
+              if (r?.width) setDragPct(((e.clientX - r.left) / r.width) * 100)
             }}
             onPointerMove={(e) => {
-              if (e.buttons === 1) seekAt(e.clientX)
+              if (!draggingRef.current || e.buttons !== 1) return
+              const r = barRef.current?.getBoundingClientRect()
+              if (r?.width) setDragPct(Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100)))
+            }}
+            onPointerUp={(e) => {
+              if (!draggingRef.current) return
+              draggingRef.current = false
+              ;(e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId)
+              const r = barRef.current?.getBoundingClientRect()
+              if (r?.width) onSeekTo(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)))
+              setDragPct(null)
+            }}
+            onPointerCancel={() => {
+              draggingRef.current = false
+              setDragPct(null)
             }}
             style={{ touchAction: 'none' }}
           >
-            <span className="mp-full-bar-fill" style={{ width: `${pct}%` }} />
+            <span className="mp-full-bar-fill" style={{ width: `${dragPct ?? pct}%` }} />
           </div>
 
           <div className="mp-full-time">

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { m, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { EASE_OUT } from '@/lib/motion'
 
 interface Ripple {
@@ -18,8 +18,11 @@ let seq = 0
    输入框内不响应（别打扰打字）。 */
 export function InkRipple() {
   const [ripples, setRipples] = useState<Ripple[]>([])
+  const reduce = !!useReducedMotion()
 
   useEffect(() => {
+    /* 减动环境：墨环本身就是一次动画，直接整个功能让位 */
+    if (reduce) return
     const onClick = (e: MouseEvent) => {
       const el = e.target as HTMLElement | null
       if (!el) return
@@ -31,7 +34,7 @@ export function InkRipple() {
     }
     document.addEventListener('click', onClick)
     return () => document.removeEventListener('click', onClick)
-  }, [])
+  }, [reduce])
 
   return (
     <div className="fixed inset-0 z-[95] pointer-events-none overflow-hidden" aria-hidden>

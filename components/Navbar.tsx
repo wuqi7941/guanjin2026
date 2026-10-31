@@ -1,7 +1,7 @@
 'use client'
 
 import { EASE } from '@/lib/motion'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { m, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -23,7 +23,7 @@ const navLinks = [
       { href: '/bookmarks/', label: '收藏夹' },
     ],
   },
-  { href: '/about', label: '关于', idx: '03' },
+  { href: '/about/', label: '关于', idx: '03' },
   { href: '/contact/', label: '联系', idx: '04' },
 ]
 
@@ -32,6 +32,8 @@ const SUB_PREFIX = ['/blog/', '/timeline/', '/tags/', '/bookmarks/']
 export function Navbar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const burgerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   const isActive = (href: string) => {
     if (href.includes('#')) return false
@@ -42,6 +44,28 @@ export function Navbar() {
 
   const isSubActive = (href: string) =>
     href === '/blog/' ? pathname.startsWith('/blog/') : pathname.startsWith(href)
+
+  /* 移动菜单：Esc 关、点外面关、开着锁背后滚动；关上把焦点还给汉堡钮 */
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    const onClick = (e: MouseEvent) => {
+      const t = e.target as HTMLElement | null
+      if (!t?.closest('.glass-nav')) setOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('click', onClick)
+    return () => {
+      document.body.style.overflow = prev
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('click', onClick)
+      burgerRef.current?.focus()
+    }
+  }, [open])
 
   return (
     <m.header
@@ -117,12 +141,14 @@ export function Navbar() {
             <Search className="w-4 h-4" />
           </button>
 
-          <button
-            className="sm:hidden w-11 h-11 rounded-[4px] flex items-center justify-center text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-1)] transition-colors"
-            onClick={() => setOpen((v) => !v)}
-            aria-label={open ? '关闭菜单' : '打开菜单'}
-            aria-expanded={open}
-          >
+        <button
+          ref={burgerRef}
+          className="sm:hidden w-11 h-11 rounded-[4px] flex items-center justify-center text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-1)] transition-colors"
+          onClick={() => setOpen((v) => !v)}
+          aria-label={open ? '关闭菜单' : '打开菜单'}
+          aria-expanded={open}
+          aria-controls="mobile-menu"
+        >
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
@@ -133,6 +159,8 @@ export function Navbar() {
       <AnimatePresence>
         {open && (
           <m.div
+            id="mobile-menu"
+            ref={menuRef}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}

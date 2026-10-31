@@ -331,7 +331,8 @@ export function bumpVisit(): number {
     sessionStorage.setItem(SESSION_KEY, '1')
     const n = prev + 1
     localStorage.setItem(VISITS_KEY, String(n))
-    return n  } catch {
+    return n
+  } catch {
     return 0
   }
 }

@@ -21,6 +21,8 @@ export function PageTransition() {
   const [tone, setTone] = useState<'ink' | 'paper'>('ink')
   const leavingRef = useRef(false)
   const safetyRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  /* 墨层铺满后那一下 router.push 也要受管：组件卸载时别再导航 */
+  const pushTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const clearSafety = useCallback(() => {
     if (safetyRef.current) {
@@ -54,7 +56,8 @@ export function PageTransition() {
         setPhase('idle')
       }, 3000)
       /* 200ms ≈ 墨层铺满（0.16s）+ 余量：铺满后再换页，避免新页从墨层边缘露出 */
-      window.setTimeout(() => router.push(href), 260)
+      clearTimeout(pushTimerRef.current)
+      pushTimerRef.current = setTimeout(() => router.push(href), 260)
     },
     [router, clearSafety],
   )
@@ -129,7 +132,12 @@ export function PageTransition() {
     leavingRef.current = false
   }, [pathname, clearSafety])
 
-  useEffect(() => clearSafety, [clearSafety])
+  useEffect(() => {
+    return () => {
+      clearSafety()
+      clearTimeout(pushTimerRef.current)
+    }
+  }, [clearSafety])
 
   return (
     <>

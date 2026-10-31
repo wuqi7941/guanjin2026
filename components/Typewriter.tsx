@@ -179,7 +179,11 @@ export function Typewriter({
 
   /* —— 轮播打字状态机 —— */
   useEffect(() => {
-    if (reduce) return
+    if (reduce) {
+      /* 减动用户不打字机动画，但静息句/深夜句/回应句照样要看见——直接整句铺上去 */
+      setDisplayText(effectiveTexts[0] ?? '')
+      return
+    }
     if (!inView) return
     if (active) return
     const currentText = effectiveTexts[currentIndex % effectiveTexts.length]

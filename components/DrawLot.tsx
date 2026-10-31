@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ScrollText } from 'lucide-react'
 import { collectEgg } from '@/lib/eggs'
 
@@ -8,6 +8,14 @@ import { collectEgg } from '@/lib/eggs'
    点下去先停 0.5 秒（让按钮给个反馈），再走全站统一的墨染跳转。 */
 export function DrawLot({ slugs }: { slugs: string[] }) {
   const [drawn, setDrawn] = useState(false)
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  useEffect(
+    () => () => {
+      timers.current.forEach(clearTimeout)
+    },
+    [],
+  )
 
   const draw = () => {
     if (!slugs.length || drawn) return
@@ -20,10 +28,12 @@ export function DrawLot({ slugs }: { slugs: string[] }) {
     } catch {
       /* ignore */
     }
-    window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('embers-navigate', { detail: `/blog/${slug}/` }))
-      window.setTimeout(() => setDrawn(false), 900)
-    }, 480)
+    timers.current.push(
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('embers-navigate', { detail: `/blog/${slug}/` }))
+        timers.current.push(setTimeout(() => setDrawn(false), 900))
+      }, 480),
+    )
   }
 
   return (

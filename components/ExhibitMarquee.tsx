@@ -21,7 +21,14 @@ export function ExhibitMarquee({ items }: { items: Item[] }) {
       <div className="marquee-viewport">
         <div className="marquee-track">
           {loop.map((item, i) => (
-            <Link key={`${item.slug}-${i}`} href={`/blog/${item.slug}/`} className="marquee-item">
+            <Link
+              key={`${item.slug}-${i}`}
+              href={`/blog/${item.slug}/`}
+              className="marquee-item"
+              /* 循环带是同一段内容放两遍接成龙：第二遍对读屏隐藏，别念两次 */
+              aria-hidden={i >= items.length || undefined}
+              tabIndex={i >= items.length ? -1 : undefined}
+            >
               <span className="marquee-quote" aria-hidden>
                 「
               </span>

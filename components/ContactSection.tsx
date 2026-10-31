@@ -92,7 +92,8 @@ export function ContactSection() {
             <p className="text-sm text-[var(--ink-subtle)] mb-6">
               如果我的文章对你有帮助，可以扫码支持。
             </p>
-            <div className="qr-sticker relative w-52 h-52 bg-white p-2 border border-[var(--hairline)] overflow-hidden">
+            {/* overflow-hidden 必须摘掉：qr-sticker 的胶带 ::before 顶部越界 -9px，裁了就成断带 */}
+            <div className="qr-sticker relative w-52 h-52 bg-white p-2 border border-[var(--hairline)]">
               <Image
                 src="/images/reward-qrcode.jpg"
                 alt="观烬的微信赞赏码"

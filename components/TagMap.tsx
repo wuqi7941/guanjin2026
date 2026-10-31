@@ -78,6 +78,20 @@ export function TagMap({
                   onMouseEnter={() => setActive(n.name)}
                   onMouseLeave={() => setActive(null)}
                   onClick={() => setActive((v) => (v === n.name ? null : n.name))}
+                  /* 键盘可达：每个分区可 Tab、Enter/空格点亮，Esc 清除 */
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`分区 ${n.name}`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setActive((v) => (v === n.name ? null : n.name))
+                    } else if (e.key === 'Escape') {
+                      setActive(null)
+                    }
+                  }}
+                  onFocus={() => setActive(n.name)}
+                  onBlur={() => setActive(null)}
                   style={{ cursor: 'pointer', opacity: dim ? 0.35 : 1 }}
                 >
                   <circle

@@ -20,6 +20,7 @@ export function Hero() {
   const [sealLit, setSealLit] = useState(false)
   const [phaseLine, setPhaseLine] = useState<string | null>(null)
   const sealTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sealLitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const idleMarked = useRef(false)
 
   /* 鼠标微视差：标题反向、照片同向（仅桌面精指针，减动关闭） */
@@ -60,9 +61,18 @@ export function Hero() {
       setSealLit(true)
       chime()
       collectEgg('seal')
-      window.setTimeout(() => setSealLit(false), 2600)
+      if (sealLitTimer.current) clearTimeout(sealLitTimer.current)
+      sealLitTimer.current = setTimeout(() => setSealLit(false), 2600)
     }, 1200)
   }, [])
+  /* 长按中途切页：两个定时器都不能对已卸载组件 setState */
+  useEffect(
+    () => () => {
+      if (sealTimer.current) clearTimeout(sealTimer.current)
+      if (sealLitTimer.current) clearTimeout(sealLitTimer.current)
+    },
+    [],
+  )
   const onSealUp = useCallback(() => {
     if (sealTimer.current) {
       clearTimeout(sealTimer.current)

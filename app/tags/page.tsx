@@ -5,9 +5,13 @@ import { TagMap } from '@/components/TagMap'
 import { getTagMap } from '@/lib/tagmap'
 import { getAllPosts } from '@/lib/posts'
 
-export const metadata = {
-  title: '标签星图 — 余烬 EMBERS',
-  description: '31 个分区在同一篇里碰到过就连一条线。悬停看关系，点一个分区看它的文章。',
+/* 分区数动态生成：以前硬编码「31 个」，分区一变描述就撒谎 */
+export function generateMetadata() {
+  const count = getTagMap().nodes.length
+  return {
+    title: '标签星图 — 余烬 EMBERS',
+    description: `${count} 个分区在同一篇里碰到过就连一条线。悬停看关系，点一个分区看它的文章。`,
+  }
 }
 
 export default function TagsPage() {

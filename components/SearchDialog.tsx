@@ -137,6 +137,7 @@ export function SearchDialog() {
   }, [q, hits.length, ready])
 
   const openDialog = useCallback(() => {
+    openerRef.current = document.activeElement as HTMLElement | null
     setOpen(true)
     try {
       setLastQuery(localStorage.getItem('embers_last_query') ?? '')
@@ -156,6 +157,9 @@ export function SearchDialog() {
     setQ('')
     setActive(0)
   }, [])
+
+  /* 焦点归还：从哪打开的，关上回哪去 */
+  const openerRef = useRef<HTMLElement | null>(null)
 
   const goPath = useCallback(
     (path: string) => {
@@ -225,8 +229,13 @@ export function SearchDialog() {
     return () => window.removeEventListener('embers-search-prefetch', prefetch)
   }, [])
 
-  /* 焦点陷阱：Tab 只在弹窗内循环，不跑到背后的页面 */
+  /* 焦点陷阱：Tab 只在弹窗内循环，不跑到背后的页面；Esc 在面板任何位置都关 */
   const onPanelKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      closeDialog()
+      return
+    }
     if (e.key !== 'Tab') return
     const panel = panelRef.current
     if (!panel) return
@@ -246,7 +255,7 @@ export function SearchDialog() {
     }
   }
 
-  /* 打开时锁滚动 + 聚焦输入框 */
+  /* 打开时锁滚动 + 聚焦输入框；关闭时把焦点还给触发元素 */
   useEffect(() => {
     if (!open) return
     const prev = document.body.style.overflow
@@ -255,6 +264,8 @@ export function SearchDialog() {
     return () => {
       document.body.style.overflow = prev
       window.clearTimeout(t)
+      openerRef.current?.focus?.()
+      openerRef.current = null
     }
   }, [open])
 

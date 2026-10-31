@@ -1,5 +1,5 @@
-﻿import { memo, useRef, type RefObject, type PointerEvent } from 'react'
-import { Shuffle, SkipBack, Play, Pause, SkipForward, Volume2 } from 'lucide-react'
+﻿import { memo, useEffect, useRef, useState, type RefObject, type PointerEvent } from 'react'
+import { Shuffle, SkipBack, Play, Pause, SkipForward, Volume2, VolumeX } from 'lucide-react'
 
 interface MpControlsProps {
   pct: number
@@ -27,6 +27,18 @@ export const MpControls = memo(function MpControls(props: MpControlsProps) {
   } = props
 
   const dragging = useRef(false)
+  /* 拖动中的本地进度：move 只更新这个（跟手的 UI），pointerup 才真正 seek——
+     流式源经不起每帧 currentTime 跳段，那会连环断流 */
+  const [dragPct, setDragPct] = useState<number | null>(null)
+
+  /* iOS Safari 的 audio.volume 只读（音量由系统接管）：滑杆拖了也白拖，干脆换成提示 */
+  const [iosVol, setIosVol] = useState(false)
+  useEffect(() => {
+    const ua = navigator.userAgent
+    const isIOS =
+      /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    setIosVol(isIOS)
+  }, [])
 
   const ratioFromX = (clientX: number) => {
     const el = seekBarRef.current
@@ -35,18 +47,23 @@ export const MpControls = memo(function MpControls(props: MpControlsProps) {
     return Math.max(0, Math.min(1, (clientX - r.left) / r.width))
   }
 
+  const shownPct = dragPct ?? pct
+
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     dragging.current = true
     ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
-    onSeekTo(ratioFromX(e.clientX))
+    setDragPct(ratioFromX(e.clientX) * 100)
   }
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     if (!dragging.current) return
-    onSeekTo(ratioFromX(e.clientX))
+    setDragPct(ratioFromX(e.clientX) * 100)
   }
   const onPointerUp = (e: PointerEvent<HTMLDivElement>) => {
+    if (!dragging.current) return
     dragging.current = false
     ;(e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId)
+    onSeekTo(ratioFromX(e.clientX))
+    setDragPct(null)
   }
 
   return (
@@ -61,13 +78,13 @@ export const MpControls = memo(function MpControls(props: MpControlsProps) {
           className="relative h-5 flex items-center cursor-pointer group touch-none select-none"
           role="slider"
           aria-label="播放进度"
-          aria-valuenow={Math.round(pct)}
+          aria-valuenow={Math.round(shownPct)}
           aria-valuemin={0}
           aria-valuemax={100}
           style={{ touchAction: 'none' }}
         >
           <div className="w-full h-[3px] rounded-full bg-[var(--surface-4)] overflow-hidden group-hover:h-[5px] group-active:h-[5px] transition-all">
-            <div className="h-full bg-[var(--accent)] rounded-full" style={{ width: `${pct}%` }} />
+            <div className="h-full bg-[var(--accent)] rounded-full" style={{ width: `${shownPct}%` }} />
           </div>
         </div>
         <div className="flex justify-between text-[10px] font-mono text-[var(--ink-tertiary)] pb-2">
@@ -110,17 +127,25 @@ export const MpControls = memo(function MpControls(props: MpControlsProps) {
         </button>
         <div className="flex items-center gap-1.5 pl-1">
           <Volume2 className="w-3.5 h-3.5 text-[var(--ink-subtle)] shrink-0" />
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={vol}
-            onChange={(e) => onVol(parseFloat(e.target.value))}
-            className="mp-range w-20 sm:w-16"
-            aria-label="音量"
-            style={{ touchAction: 'none', background: `linear-gradient(to right, var(--accent) ${volPct}%, var(--surface-4) ${volPct}%)` }}
-          />
+          {iosVol ? (
+            /* iOS：audio.volume 由系统接管，网页滑杆无效——给真话，不给假控件 */
+            <span className="flex items-center gap-1 text-[10px] font-mono tracking-[0.08em] text-[var(--ink-tertiary)]">
+              <VolumeX className="w-3 h-3" aria-hidden />
+              音量请用系统键
+            </span>
+          ) : (
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={vol}
+              onChange={(e) => onVol(parseFloat(e.target.value))}
+              className="mp-range w-20 sm:w-16"
+              aria-label="音量"
+              style={{ touchAction: 'none', background: `linear-gradient(to right, var(--accent) ${volPct}%, var(--surface-4) ${volPct}%)` }}
+            />
+          )}
         </div>
       </div>
     </>

@@ -1,4 +1,4 @@
-import { type RefObject } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import { m } from 'framer-motion'
 import { X, Music2, ListMusic, Maximize2 } from 'lucide-react'
 import { Track } from '@/lib/playlist'
@@ -46,12 +46,24 @@ export function MpPanel({
   scrollRef, seekBarRef,
   onClose, onTab, onPlay, onSeekTo, onToggleShuffle, onPrev, onToggle, onNext, onVol, onFull,
 }: MpPanelProps) {
+  const closeRef = useRef<HTMLButtonElement>(null)
+
+  /* dialog 语义补全：打开时焦点进面板（交给关闭钮），关闭时还原到触发元素 */
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    closeRef.current?.focus()
+    return () => opener?.focus?.()
+  }, [])
+
   return (
     <m.div
       initial={{ x: '100%', opacity: 0.5 }}
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: '100%', opacity: 0 }}
       transition={{ duration: 0.32, ease: EASE_QUIET }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="播放器"
       className="mp-panel sm:absolute sm:bottom-full sm:right-0 sm:mb-4 max-sm:fixed max-sm:inset-y-0 max-sm:right-0 max-sm:z-[78]"
     >
       <div className="flex items-start gap-3 px-5 pt-5 pb-2">
@@ -67,6 +79,7 @@ export function MpPanel({
           </p>
         </div>
         <button
+          ref={closeRef}
           onClick={(e) => {
             e.stopPropagation()
             onClose()
