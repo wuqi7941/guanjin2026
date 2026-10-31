@@ -11,6 +11,16 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-10-31',
+    title: '歌单里那些只剩三十秒的歌，又能整首听完了',
+    items: [
+      '之前的音源把大部分歌降成了 30 秒试听，现在换了新的播放通道，整首都是完整的',
+      '新通道是 320kbps，音质比原来更好；拖动进度条也更跟手',
+      '一条歌都播不出来的时候会自动依次换备用通道，不再是直接没声',
+      '上次听到哪儿，关掉网页再回来，点播放还在那句上',
+    ],
+  },
+  {
+    date: '2026-10-31',
     title: '这站被从头到尾检修了一遍，好用了一大截',
     items: [
       '文章页补上了搜索引擎认识的那套名片：分享出去的标题、日期、作者不再是一张白纸',
@@ -218,4 +228,4 @@ export const CHANGELOG: ChangelogEntry[] = [
 
 /* 显式版本号：同一天可以有多条记录，靠它区分「看过哪一版」。
    加新条目时手动改这里（消费方是 ChangelogPanel 的首次来访提示）。 */
-export const CHANGELOG_VERSION = '2026-10-31-audit'
+export const CHANGELOG_VERSION = '2026-10-31-music'

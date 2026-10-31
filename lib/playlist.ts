@@ -97,6 +97,53 @@ export const PLAYLIST: Track[] = [
   { t: "Moon River", a: "Audrey Hepburn", id: 1474018440 },
 ]
 
+/* 音源三档（2026-10-31 起）：
+   0 = GD Studio（JSONP，完整 320kbps；meting 试听化之后的正式主源）
+   1 = injahow meting（302 直链，免费曲完整、版权曲会退成 30s 试听）
+   2 = 网易官方外链（最后的兜底，未登录基本是 30s） */
 export const TRACK_URL = (id: number) => `https://api.injahow.cn/meting/?type=url&id=${id}`
 export const NETEASE_URL = (id: number) => `https://music.163.com/song/media/outer/url?id=${id}.mp3`
 export const META_URL = (id: number) => `https://api.injahow.cn/meting/?type=song&id=${id}`
+
+/* GD Studio 不给 CORS 头，fetch 会被浏览器拦；但它支持 JSONP，脚本注入即可取到 url。 */
+export const GD_URL = (id: number, cb: string) =>
+  `https://music-api.gdstudio.xyz/api.php?types=url&id=${id}&source=netease&br=320&callback=${cb}`
+
+let gdSeq = 0
+
+/* 拿一首歌的完整播放地址（约 8s 超时）。GD 返回的直链有时效，拿到就立刻用，别缓存。 */
+export function gdTrackUrl(id: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (typeof document === 'undefined') return reject(new Error('no document'))
+    const cb = `__embersGd${++gdSeq}`
+    const script = document.createElement('script')
+    const win = window as unknown as Record<string, unknown>
+    let done = false
+
+    const cleanup = () => {
+      window.clearTimeout(timer)
+      script.remove()
+      delete win[cb]
+    }
+    const fail = (msg: string) => {
+      if (done) return
+      done = true
+      cleanup()
+      reject(new Error(msg))
+    }
+    const timer = window.setTimeout(() => fail('gd timeout'), 8000)
+
+    win[cb] = (j: { url?: string } | null) => {
+      if (done) return
+      if (j?.url) {
+        done = true
+        cleanup()
+        resolve(j.url)
+      } else fail('gd no url')
+    }
+
+    script.src = GD_URL(id, cb)
+    script.onerror = () => fail('gd script error')
+    document.head.appendChild(script)
+  })
+}

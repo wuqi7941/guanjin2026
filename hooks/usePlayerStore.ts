@@ -1,8 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { PLAYLIST, TRACK_URL, NETEASE_URL, META_URL } from '@/lib/playlist'
-import { bumpCounter, collectEgg } from '@/lib/eggs'
+import { PLAYLIST, TRACK_URL, NETEASE_URL, META_URL, gdTrackUrl } from '@/lib/playlist'
+import { collectEgg } from '@/lib/eggs'
 
 const LS_KEY = 'embers_mp'
 
@@ -95,9 +95,11 @@ export function usePlayerStore() {
   const lrcCacheRef = useRef<Record<string, string>>({})
   const seekBarRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  /* 音源层级：1=injahow 备用链（首选，实测 87/88 可播）/ 2=网易官方外链（兜底，34/88）。
-     play() 一律先 inj，失败或时长过短（试听）再退网易。 */
-  const srcTierRef = useRef(1)
+  /* 音源层级：0=GD Studio（完整 320k，JSONP）/ 1=injahow meting（版权曲会试听化）/ 2=网易外链（兜底）。
+     2026-10-31：meting 把非免费曲降成 30s 试听，主源改为 GD Studio。 */
+  const srcTierRef = useRef(0)
+  /* 恢复上次进度时暂存的时间点：等真正开播、metadata 到了再 seek */
+  const restoreTimeRef = useRef(0)
   /* 暗语「挑不出来」：连续切歌计数 */
   const nextBurstRef = useRef({ t: 0, n: 0 })
 
@@ -167,22 +169,36 @@ export function usePlayerStore() {
   }, [])
 
   const play = useCallback(
-    (i: number) => {
+    (i: number, seekTo = 0) => {
       if (i < 0 || i >= PLAYLIST.length) i = 0
       idxRef.current = i
       setIdx(i)
       setErr('')
       triesRef.current = 0
+      srcTierRef.current = 0
       const a = audioRef.current
       if (!a) return
       const track = PLAYLIST[i]
-      /* 实测：inj（meting 302）87/88 可播，网易外链只有 34/88。
-         所以一律先取 inj，失败再退网易官方外链——不再按 v 字段分流。 */
-      srcTierRef.current = 1
-      a.src = TRACK_URL(track.id)
-      a.load()
-      a.volume = volRef.current
-      playSafe(a)
+      /* 起点先记下：URL 到手、metadata 到了再 seek 才生效 */
+      restoreTimeRef.current = seekTo
+      setBuffering(true)
+      const start = (src: string, tier: number) => {
+        srcTierRef.current = tier
+        a.src = src
+        a.load()
+        a.volume = volRef.current
+        playSafe(a)
+      }
+      /* 主源 GD Studio（完整 320k，JSONP）；失败退 meting；都废则交给 onError 兜底网易 */
+      gdTrackUrl(track.id)
+        .then((url) => {
+          if (idxRef.current !== i) return /* 已经切歌，这次结果作废 */
+          start(url, 0)
+        })
+        .catch(() => {
+          if (idxRef.current !== i) return
+          start(TRACK_URL(track.id), 1)
+        })
       fetchMeta(i)
     },
     [fetchMeta, playSafe],
@@ -229,8 +245,9 @@ export function usePlayerStore() {
     const a = audioRef.current
     if (!a) return
     if (a.paused) {
+      /* 恢复态还没有 src（直链有时效，播放时才解析）：从记录的进度重新起播 */
       if (a.src) playSafe(a)
-      else play(idxRef.current >= 0 ? idxRef.current : 0)
+      else play(idxRef.current >= 0 ? idxRef.current : 0, restoreTimeRef.current)
     } else {
       a.pause()
     }
@@ -281,27 +298,13 @@ export function usePlayerStore() {
         if (restoreIdx >= 0) {
           idxRef.current = restoreIdx
           setIdx(restoreIdx)
+          /* 不设 src、不 load：GD 直链有时效，等用户点播放时再解析。
+             进度先记进 restoreTimeRef，metadata 到达后由 onAudioLoadedMetadata 统一 seek。 */
+          restoreTimeRef.current = o.t || 0
           const a = audioRef.current
-          const track = PLAYLIST[restoreIdx]
           if (a) {
-            srcTierRef.current = 1
             a.preload = 'none'
-            a.src = TRACK_URL(track.id)
             a.volume = volRef.current
-            /* 不立刻 load()：用户还没点播放，不该为一个后台恢复去拉流。
-               位置要等 metadata 到了再 seek，否则会被忽略。 */
-            const savedTime = o.t || 0
-            if (savedTime > 0) {
-              const onMeta = () => {
-                try {
-                  a.currentTime = savedTime
-                } catch {
-                  /* ignore */
-                }
-                a.removeEventListener('loadedmetadata', onMeta)
-              }
-              a.addEventListener('loadedmetadata', onMeta)
-            }
           }
           fetchMeta(restoreIdx)
         }
@@ -384,13 +387,20 @@ export function usePlayerStore() {
 
   /* audio 元素事件处理器 */
   const swapSource = useCallback(() => {
-    /* 首选 inj 挂了 → 退到网易官方外链再试一次；两边都废就交给错误提示 */
+    /* 0=GD Studio → 1=meting → 2=网易外链；三档用完就交错误提示 */
     const a = audioRef.current
     const s = idxRef.current >= 0 ? PLAYLIST[idxRef.current] : null
-    if (!a || !s || srcTierRef.current === 2 || triesRef.current >= 2) return false
+    if (!a || !s || triesRef.current >= 2) return false
     triesRef.current += 1
-    srcTierRef.current = 2
-    a.src = NETEASE_URL(s.id)
+    if (srcTierRef.current === 0) {
+      srcTierRef.current = 1
+      a.src = TRACK_URL(s.id)
+    } else if (srcTierRef.current === 1) {
+      srcTierRef.current = 2
+      a.src = NETEASE_URL(s.id)
+    } else {
+      return false
+    }
     a.load()
     playSafe(a)
     return true
@@ -424,8 +434,18 @@ export function usePlayerStore() {
       }
     },
     onAudioLoadedMetadata: (e: React.SyntheticEvent<HTMLAudioElement>) => {
-      /* 时长过短（<65s，疑似试听）→ 换源拿完整版 */
       const a = e.currentTarget
+      /* 恢复的进度 / 指定的起点：metadata 到位后才 seek 得动 */
+      if (restoreTimeRef.current > 0) {
+        const t = restoreTimeRef.current
+        restoreTimeRef.current = 0
+        try {
+          a.currentTime = t
+        } catch {
+          /* ignore */
+        }
+      }
+      /* 时长过短（<65s，疑似试听）→ 降档换源拿完整版 */
       if (isFinite(a.duration) && a.duration > 0 && a.duration < 65) {
         swapSource()
       }
