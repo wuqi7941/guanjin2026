@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "obfuscate": "node scripts/obfuscate.js",
     "build:prod": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -30,7 +29,6 @@
     "@types/react": "^18.3.2",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.19",
-    "javascript-obfuscator": "^5.5.0",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.4.5"
