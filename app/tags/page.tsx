@@ -27,7 +27,7 @@ export default function TagsPage() {
       <Navbar />
 
       <section className="relative pt-28 md:pt-32 pb-24 px-6 overflow-hidden">
-        <span className="poster-number" aria-hidden>N°014</span>
+        <span className="poster-number" aria-hidden>N°006</span>
         <div className="max-w-4xl mx-auto relative z-10">
           <div className="mb-10">
             <div className="flex items-center gap-4 mb-5">

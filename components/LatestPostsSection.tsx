@@ -15,7 +15,7 @@ interface LatestPostsSectionProps {
 export function LatestPostsSection({ posts }: LatestPostsSectionProps) {
   return (
     <section id="latest" className="relative py-24 px-6">
-      <span className="poster-number" aria-hidden>N°003</span>
+      
       <div className="max-w-6xl mx-auto relative z-10">
         <m.div
           initial={{ opacity: 0, y: 40 }}

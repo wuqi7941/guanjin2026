@@ -4304,3 +4304,84 @@ html.dark .prose-custom a:hover {
 body {
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
+/* ================================================================
+   审美第二批（2026-10-31 深夜）
+   ================================================================ */
+
+/* 一沓纸要有第二层：::after 反向错位，hover 时两层朝相反方向滑 */
+.paper-stack::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: inherit;
+  transform: translate(11px, 14px) rotate(-0.4deg);
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.paper-stack:hover::before,
+.paper-stack:active::before {
+  transform: translate(3px, 4px) rotate(0.2deg);
+}
+
+.paper-stack:hover::after,
+.paper-stack:active::after {
+  transform: translate(7px, 9px) rotate(-0.9deg);
+}
+
+/* 灯下的纸：四角比中间暗一点点 */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 90% at 50% 42%,
+    transparent 55%,
+    color-mix(in srgb, var(--canvas) 12%, transparent) 100%
+  );
+}
+
+html.dark body::after {
+  background: radial-gradient(
+    120% 90% at 50% 42%,
+    transparent 45%,
+    color-mix(in srgb, #000 26%, transparent) 100%
+  );
+}
+
+/* 正文强调：中英一致——只加深颜色，不靠合成粗体 */
+.prose-custom strong {
+  font-weight: inherit;
+  color: var(--ink);
+  font-synthesis-weight: none;
+}
+
+/* 正文里的英文略收一点字距，和宋体的实字面拉平 */
+.prose-custom {
+  font-synthesis-weight: none;
+}
+
+/* 引号退回三级灰：朱红只留给值得点火的东西 */
+.daily-quote-mark,
+.marquee-quote {
+  color: var(--ink-tertiary);
+}
+/* 页脚暗语 31 条：默认收起，悬停/聚焦才浮现，别把页脚变成表格 */
+.egg-hint {
+  display: block;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.25s ease;
+}
+
+li:hover > .egg-hint,
+li:focus-within > .egg-hint {
+  max-height: 4rem;
+  opacity: 1;
+}

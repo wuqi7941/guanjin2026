@@ -40,7 +40,7 @@ export function Footer() {
   return (
     <footer className="relative py-14 px-6 overflow-hidden">
       <div className="ink-line absolute top-0 left-0 right-0" aria-hidden />
-      <span className="poster-number" aria-hidden style={{ fontSize: 'clamp(4rem, 14vw, 10rem)', opacity: 0.12 }}>N°005</span>
+      
       <div className="max-w-6xl mx-auto relative z-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
           <div>
@@ -133,7 +133,7 @@ export function Footer() {
                         <span className={got ? 'text-[var(--ink-muted)]' : 'text-[var(--ink-tertiary)]'}>
                           {got ? e.label : '？'}
                         </span>
-                        <span className="text-[10px] text-[var(--ink-tertiary)] opacity-60">{e.hint}</span>
+                        <span className="egg-hint text-[10px] text-[var(--ink-tertiary)] opacity-60">{e.hint}</span>
                       </li>
                     )
                   })}

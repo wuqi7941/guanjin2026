@@ -15,7 +15,7 @@ export default function EggsPage() {
       <Navbar />
 
       <section className="relative pt-28 md:pt-32 pb-24 px-6 overflow-hidden">
-        <span className="poster-number" aria-hidden>N°012</span>
+        <span className="poster-number" aria-hidden>N°007</span>
         <div className="max-w-3xl mx-auto relative z-10">
           <div className="mb-10">
             <div className="flex items-center gap-4 mb-5">

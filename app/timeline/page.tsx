@@ -29,7 +29,7 @@ export default function TimelinePage() {
       <Navbar />
 
       <section className="relative pt-28 md:pt-32 pb-24 px-6 overflow-hidden">
-        <span className="poster-number" aria-hidden>N°013</span>
+        <span className="poster-number" aria-hidden>N°005</span>
         <div className="max-w-3xl mx-auto relative z-10">
           <div className="mb-12">
             <div className="flex items-center gap-4 mb-5">

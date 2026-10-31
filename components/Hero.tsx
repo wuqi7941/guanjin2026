@@ -216,7 +216,7 @@ export function Hero() {
         <m.a
           href="#latest"
           animate={{ y: [0, 8, 0] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          transition={{ duration: 1.8, repeat: 2, repeatDelay: 0.4, ease: 'easeInOut' }}
           className="flex flex-col items-center gap-2 text-[var(--ink-subtle)] hover:text-[var(--ink)] transition-colors"
         >
           <span className="kicker text-[10px]">SCROLL ↓</span>

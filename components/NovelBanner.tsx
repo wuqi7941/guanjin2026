@@ -21,7 +21,7 @@ export function NovelBanner({ post }: NovelBannerProps) {
         transition={{ duration: 0.7, ease: EASE }}
         className="poster-block violet paper-stack relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--hairline)]"
       >
-        <span className="poster-number" aria-hidden>N°002</span>
+        
 
         <div className="relative z-10 p-8 sm:p-14 lg:p-16">
           <div className="max-w-2xl">
@@ -45,10 +45,10 @@ export function NovelBanner({ post }: NovelBannerProps) {
             <div className="flex flex-col sm:flex-row items-start gap-4">
               <Link
                 href={`/blog/${post.slug}/`}
-                className="inline-flex items-center gap-2 bg-[var(--accent)] text-[var(--surface-1)] px-8 py-3.5 text-[15px] font-semibold rounded-[var(--radius-md)] hover:bg-[var(--accent-hover)] transition-colors"
+                className="group inline-flex items-center gap-2 border border-[var(--accent)] text-[var(--accent)] px-8 py-3.5 text-[15px] font-semibold rounded-[var(--radius-md)] hover:bg-[var(--accent)] hover:text-[var(--surface-1)] transition-colors"
               >
                 开始阅读
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
               <Link
                 href="/blog/"

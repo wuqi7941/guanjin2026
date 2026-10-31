@@ -34,7 +34,7 @@ const emberPoints = [
 export function AboutSection() {
   return (
     <section className="relative pt-36 pb-32 px-6">
-      <span className="poster-number" aria-hidden>N°001</span>
+      <span className="poster-number" aria-hidden>N°003</span>
       <div className="max-w-5xl mx-auto relative z-10">
         <m.div
           initial={{ opacity: 0, y: 30 }}
