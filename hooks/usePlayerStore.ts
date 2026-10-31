@@ -390,8 +390,21 @@ export function usePlayerStore() {
       }
     },
     onAudioEnded: (e: React.SyntheticEvent<HTMLAudioElement>) => {
-      /* 暗语「十首」：听完十首 */
-      if ((bumpCounter('playten', 10) >= 10)) collectEgg('playten')
+      /* 暗语「十首」：真正播完一首才计，且按 id 去重 */
+      const cur = PLAYLIST[idxRef.current]
+      if (cur && e.currentTarget.currentTime > 60) {
+        try {
+          const raw = localStorage.getItem('embers_played_ids')
+          const ids: number[] = raw ? JSON.parse(raw) : []
+          if (!ids.includes(cur.id)) {
+            ids.push(cur.id)
+            localStorage.setItem('embers_played_ids', JSON.stringify(ids))
+            if (ids.length >= 10) collectEgg('playten')
+          }
+        } catch {
+          /* ignore */
+        }
+      }
       const a = e.currentTarget
       if (a.duration && a.duration < 65) {
         if (swapSource()) return

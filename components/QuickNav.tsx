@@ -14,14 +14,21 @@ const MAP: Record<string, { href: string; label: string }> = {
   c: { href: '/contact/', label: '联系' },
 }
 
-const HINT = ['h', 'b', 't', 's', 'f']
+/* 提示由 MAP 派生，别再手写一份对不上的清单 */
+const HINT = ['h', 'b', 't', 's', 'f'].map((k) => ({ key: k, label: MAP[k].label }))
+
+const ARM_MS = 1200
 
 export function QuickNav() {
   const [armed, setArmed] = useState(false)
+  /* armed 同时放 ref：effect 只挂一次，靠 ref 读状态，
+     避免 setArmed 触发重渲染 → cleanup 把刚设好的定时器清掉 */
+  const armedRef = useRef(false)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     const disarm = () => {
+      armedRef.current = false
       setArmed(false)
       clearTimeout(timer.current)
     }
@@ -31,11 +38,12 @@ export function QuickNav() {
       if (el && el.closest('input, textarea, select, [contenteditable="true"]')) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
 
-      if (!armed) {
+      if (!armedRef.current) {
         if (e.key.toLowerCase() === 'g') {
+          armedRef.current = true
           setArmed(true)
           clearTimeout(timer.current)
-          timer.current = setTimeout(() => setArmed(false), 1200)
+          timer.current = setTimeout(disarm, ARM_MS)
         }
         return
       }
@@ -52,17 +60,17 @@ export function QuickNav() {
       window.removeEventListener('keydown', onKey)
       clearTimeout(timer.current)
     }
-  }, [armed])
+  }, [])
 
   if (!armed) return null
 
   return (
     <div className="quick-hint" role="status">
-      {HINT.map((k) => (
-        <span key={k}>
+      {HINT.map((h) => (
+        <span key={h.key}>
           <kbd>g</kbd>
-          <kbd>{k}</kbd>
-          {MAP[k].label}
+          <kbd>{h.key}</kbd>
+          {h.label}
         </span>
       ))}
     </div>

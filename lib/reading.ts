@@ -49,11 +49,13 @@ export function getProgress(slug: string): number {
   return map[slug]?.p ?? 0
 }
 
-/* 最近一篇「读了但没读完」的文章（<96% 且 >3%） */
-export function getResume(): { slug: string; p: number } | null {
+/* 最近一篇「读了但没读完」的文章。
+   区间只在这里定一次——调用方不要再自己写一套阈值，
+   否则会出现「getResume 给了候选、UI 又嫌它不合格」的静默失效。 */
+export function getResume(min = 0.03, max = 0.95): { slug: string; p: number } | null {
   const map = read<ProgressMap>(PROGRESS_KEY, {})
   const ordered = Object.entries(map)
-    .filter(([, v]) => v.p > 0.03 && v.p < 0.96)
+    .filter(([, v]) => v.p > min && v.p < max)
     .sort((a, b) => b[1].t - a[1].t)
   const first = ordered[0]
   return first ? { slug: first[0], p: first[1].p } : null

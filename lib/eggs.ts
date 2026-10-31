@@ -362,7 +362,12 @@ function isoDay(d = new Date()): string {
 export function recordVisitDay(): number {
   try {
     const today = isoDay()
-    if (!localStorage.getItem(FIRST_KEY)) localStorage.setItem(FIRST_KEY, String(Date.now()))
+    if (!localStorage.getItem(FIRST_KEY)) {
+      /* 老访客：本地已有到访次数但没有 FIRST_KEY，按次数倒推一个粗略的首次时间 */
+      const visits = parseInt(localStorage.getItem(VISITS_KEY) || '0', 10) || 0
+      const back = visits > 0 ? Date.now() - Math.min(visits, 400) * 86400000 : Date.now()
+      localStorage.setItem(FIRST_KEY, String(back))
+    }
     const raw = localStorage.getItem(DAYS_KEY)
     const days: string[] = raw ? JSON.parse(raw) : []
     if (!days.includes(today)) {
@@ -403,7 +408,8 @@ export function bumpCounter(key: string, n: number): number {
   try {
     const cur = (parseInt(localStorage.getItem('embers_c_' + key) || '0', 10) || 0) + 1
     localStorage.setItem('embers_c_' + key, String(cur))
-    return cur >= n ? cur : cur
+    void n
+    return cur
   } catch {
     return 0
   }

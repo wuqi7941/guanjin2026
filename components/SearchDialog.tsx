@@ -43,6 +43,7 @@ interface Hit {
   doc: Doc
   score: number
   snippet: string
+  inTitle: boolean
 }
 
 /* 打分：标题 > 分区 > 摘要 > 正文；正文按出现次数小幅加权 */
@@ -53,6 +54,7 @@ function search(list: Doc[], raw: string): Hit[] {
 
   for (const doc of list) {
     const title = doc.title.toLowerCase()
+    const inTitle = title.includes(q)
     let score = 0
     if (title === q) score += 240
     else if (title.startsWith(q)) score += 120
@@ -82,10 +84,16 @@ function search(list: Doc[], raw: string): Hit[] {
       const end = Math.min(doc.body.length, hitAt + q.length + 46)
       snippet = (start > 0 ? '…' : '') + doc.body.slice(start, end).replace(/\n/g, ' ') + (end < doc.body.length ? '…' : '')
     }
-    hits.push({ doc, score, snippet })
+    hits.push({ doc, score, snippet, inTitle })
   }
 
-  return hits.sort((a, b) => b.score - a.score || b.doc.date.localeCompare(a.doc.date)).slice(0, 12)
+  /* 标题命中永远排在前面：分组标题与排序才不会打架 */
+  return hits
+    .sort(
+      (a, b) =>
+        Number(b.inTitle) - Number(a.inTitle) || b.score - a.score || b.doc.date.localeCompare(a.doc.date),
+    )
+    .slice(0, 12)
 }
 
 function Highlight({ text, q }: { text: string; q: string }) {
@@ -115,11 +123,11 @@ export function SearchDialog() {
 
   const hits = useMemo(() => search(docs, q), [docs, q])
 
-  /* 暗语「三次」：一分钟里搜了三次，都没找到 */
+  /* 暗语「三次」：一分钟里提交了三次搜索，都没找到。
+     只认 Enter 提交，不认输入过程中的每一个字符。 */
   const missRef = useRef<number[]>([])
-  useEffect(() => {
-    if (!ready || q.trim().length < 2) return
-    if (hits.length > 0) return
+  const noteMiss = useCallback(() => {
+    if (!ready || q.trim().length < 2 || hits.length > 0) return
     const now = Date.now()
     missRef.current = [...missRef.current.filter((t) => now - t < 60000), now]
     if (missRef.current.length >= 3) {
@@ -272,6 +280,7 @@ export function SearchDialog() {
       setActive((i) => Math.max(0, i - 1))
     } else if (e.key === 'Enter') {
       e.preventDefault()
+      noteMiss()
       if (q.trim() === DOOR) {
         goPath('/eggs/')
         return
@@ -339,7 +348,7 @@ export function SearchDialog() {
                   </span>
                   <span className="search-door-text">
                     <span className="search-door-title">门开了</span>
-                    <span className="search-door-sub">暗语全册 · 三十一枚的触发方式</span>
+                    <span className="search-door-sub">暗语全册 · 全部触发方式</span>
                   </span>
                 </button>
               ) : (
@@ -367,9 +376,8 @@ export function SearchDialog() {
 
                   {hits.map((hit, i) => {
                     /* 分组：标题命中的排前面，正文里提到的另起一段 */
-                    const kw = q.trim().toLowerCase()
-                    const inTitle = hit.doc.title.toLowerCase().includes(kw)
-                    const prevInTitle = i > 0 ? hits[i - 1].doc.title.toLowerCase().includes(kw) : true
+                    const inTitle = hit.inTitle
+                    const prevInTitle = i > 0 ? hits[i - 1].inTitle : true
                     const showTitleHead = i === 0 && inTitle
                     const showBodyHead = i > 0 && !inTitle && prevInTitle
                     return (

@@ -4098,7 +4098,6 @@ html.dark .prose-custom a:hover {
   letter-spacing: 0.12em;
   color: var(--ink-tertiary);
   margin-left: 0.5rem;
-  margin-right: auto;
 }
 
 /* 10 · 文章页返回：桌面是文字，手机收成圆箭头 */
@@ -4278,4 +4277,26 @@ html.dark .prose-custom a:hover {
   border-radius: 3px;
   background: var(--surface-2);
   color: var(--ink);
+}
+
+/* 「继续阅读」首帧占位：与真条同高，水合插入不顶动页面 */
+.resume-hold {
+  height: 2.75rem;
+  border-top: 1px solid var(--hairline);
+}
+
+@media (max-width: 639px) {
+  .resume-hold {
+    height: 2.5rem;
+  }
+}
+
+/* 下拉与导航之间的 6px 悬停断层：补一块透明桥 */
+.nav-sub::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -8px;
+  height: 8px;
 }

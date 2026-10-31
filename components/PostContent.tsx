@@ -134,6 +134,8 @@ export function PostContent({ post, prev, next }: PostContentProps) {
 
     if (!bottomFiredRef.current && total > el.clientHeight * 0.6 && y >= total - 24) {
       bottomFiredRef.current = true
+      /* 先落盘：saveProgress 有 1.5s 节流，紧随其后的 countFinished 可能读不到这一篇 */
+      saveProgress(post.slug, 1)
       collectEgg('bottom')
 
       /* 夜读：暗色主题下读完三篇 */
@@ -212,12 +214,13 @@ export function PostContent({ post, prev, next }: PostContentProps) {
             aria-hidden
             style={{
               fontSize: 'clamp(3rem, 10vw, 7rem)',
+              /* .poster-number 只在 hero 里是 absolute，文章页要自己给 */
+              position: 'absolute',
               opacity: 0.07,
               left: 'auto',
               right: 0,
               top: 'auto',
               bottom: 0,
-              textAlign: 'right',
             }}
           >
             N°01

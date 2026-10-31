@@ -24,7 +24,8 @@ export function ChangelogPanel() {
     } catch {
       /* 隐私模式：当作没看过，但不写缓存 */
     }
-    setFirstTime(!seen)
+    /* seen 存的是版本号：只有「没看过 / 看过旧版本」才提示 */
+    setFirstTime(seen !== CHANGELOG_VERSION)
     setExpanded(!seen)
     setMounted(true)
   }, [])

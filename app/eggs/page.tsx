@@ -5,7 +5,7 @@ import { EggBook } from '@/components/EggBook'
 
 export const metadata = {
   title: '暗语全册 — 余烬 EMBERS',
-  description: '三十一枚暗语的触发方式。这一页不在导航里，只有在搜索框敲「观烬」才到得了。',
+  description: '全部暗语的触发方式。这一页不在导航里，只有在搜索框敲「观烬」才到得了。',
 }
 
 export default function EggsPage() {
@@ -27,7 +27,7 @@ export default function EggsPage() {
               暗语全册
             </h1>
             <p className="text-lg text-[var(--ink-muted)] max-w-2xl">
-              三十一枚，都藏在这座园子里。这一页不在任何导航里——只有知道在搜索框敲「观烬」的人才到得了。
+              都藏在这座园子里。这一页不在任何导航里——只有知道在搜索框敲「观烬」的人才到得了。
             </p>
           </div>
 

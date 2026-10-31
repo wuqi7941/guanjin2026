@@ -202,4 +202,6 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 ]
 
-export const CHANGELOG_VERSION = CHANGELOG[0].date
+/* 显式版本号：同一天可以有多条记录，靠它区分「看过哪一版」。
+   加新条目时手动改这里（消费方是 ChangelogPanel 的首次来访提示）。 */
+export const CHANGELOG_VERSION = '2026-10-31-night'

@@ -11,14 +11,19 @@ interface Props {
 }
 
 /* 「继续阅读」：回访的人不必重新找上次读到哪。
-   只在本地有未读完的进度时出现，读完（>95%）就当它不存在。 */
+   阈值只在 getResume 里定义一次，这里只判断「有这篇的标题」。
+   首帧占一条同高的位置，水合后插入不会再顶动下面的内容。 */
 export function ResumeBanner({ titles }: Props) {
+  const [mounted, setMounted] = useState(false)
   const [resume, setResume] = useState<{ slug: string; p: number } | null>(null)
 
   useEffect(() => {
     const r = getResume()
-    if (r && r.p > 0.03 && r.p < 0.95 && titles[r.slug]) setResume(r)
+    if (r && titles[r.slug]) setResume(r)
+    setMounted(true)
   }, [titles])
+
+  if (!mounted) return <div className="resume-hold" aria-hidden />
 
   if (!resume) return null
 
