@@ -17,7 +17,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <div className="w-10 h-10 rounded-[var(--radius-md)] card flex items-center justify-center">
+      <div className="w-11 h-11 sm:w-9 sm:h-9 rounded-[4px] flex items-center justify-center">
         <span className="sr-only">加载主题切换</span>
       </div>
     )
@@ -33,7 +33,7 @@ export function ThemeToggle() {
         setTheme(isDark ? 'light' : 'dark')
         if (bumpCounter('themeflip', 10) >= 10) collectEgg('themeflip')
       }}
-      className="relative w-10 h-10 rounded-[var(--radius-md)] card flex items-center justify-center overflow-hidden"
+      className="relative w-11 h-11 sm:w-9 sm:h-9 rounded-[4px] flex items-center justify-center hover:bg-[var(--surface-1)] transition-colors overflow-hidden"
       aria-label={isDark ? '切换到亮色模式' : '切换到暗色模式'}
     >
       <AnimatePresence mode="wait" initial={false}>

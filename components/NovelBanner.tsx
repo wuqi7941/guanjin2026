@@ -19,7 +19,7 @@ export function NovelBanner({ post }: NovelBannerProps) {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-80px' }}
         transition={{ duration: 0.7, ease: EASE }}
-        className="poster-block violet paper-stack relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--hairline)]"
+        className="novel-poster paper-stack relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--hairline)]"
       >
         
 

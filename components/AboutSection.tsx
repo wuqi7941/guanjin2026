@@ -80,7 +80,7 @@ export function AboutSection() {
               transition={{ duration: 0.7, delay: i * 0.06, ease: EASE }}
               className="card-static p-7 sm:p-8 flex flex-col sm:flex-row gap-5 items-start"
             >
-              <div className="w-11 h-11 shrink-0 rounded-[12px] bg-[var(--accent-soft)] flex items-center justify-center text-[var(--accent)]">
+              <div className="w-11 h-11 shrink-0 rounded-[4px] bg-[var(--accent-soft)] flex items-center justify-center text-[var(--accent)]">
                 <p.icon className="w-5 h-5" />
               </div>
               <div>

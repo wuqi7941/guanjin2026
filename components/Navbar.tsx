@@ -62,7 +62,6 @@ export function Navbar() {
           <span className="text-base font-bold tracking-tight">
             <span className="text-[var(--accent)]">余烬</span>
             <span className="text-[var(--ink)]"> EMBERS</span>
-            <span className="ml-1.5 kicker hidden sm:inline text-[9px]">®</span>
           </span>
         </Link>
 

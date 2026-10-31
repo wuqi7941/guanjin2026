@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { EASE } from '@/lib/motion'
 import { m } from 'framer-motion'
@@ -41,9 +41,9 @@ export function ContactSection() {
 
             <a
               href="tel:15077577602"
-              className="group flex items-center gap-4 p-4 bg-[var(--surface-2)] border border-[var(--hairline)] hover:border-[var(--accent)] transition-colors duration-300 rounded-[14px]"
+              className="group flex items-center gap-4 p-4 bg-[var(--surface-2)] border border-[var(--hairline)] hover:border-[var(--accent)] transition-colors duration-300 rounded-[4px]"
             >
-              <div className="w-11 h-11 rounded-[12px] bg-[var(--surface-3)] flex items-center justify-center text-[var(--ink-subtle)] group-hover:text-[var(--accent)] group-hover:bg-[var(--accent-soft)] transition-colors duration-300">
+              <div className="w-11 h-11 rounded-[4px] bg-[var(--surface-3)] flex items-center justify-center text-[var(--ink-subtle)] group-hover:text-[var(--accent)] group-hover:bg-[var(--accent-soft)] transition-colors duration-300">
                 <Phone className="w-5 h-5" />
               </div>
               <div>
@@ -56,9 +56,9 @@ export function ContactSection() {
 
             <a
               href="mailto:2321833732@qq.com"
-              className="group flex items-center gap-4 p-4 bg-[var(--surface-2)] border border-[var(--hairline)] hover:border-[var(--accent)] transition-colors duration-300 rounded-[14px]"
+              className="group flex items-center gap-4 p-4 bg-[var(--surface-2)] border border-[var(--hairline)] hover:border-[var(--accent)] transition-colors duration-300 rounded-[4px]"
             >
-              <div className="w-11 h-11 rounded-[12px] bg-[var(--surface-3)] flex items-center justify-center text-[var(--ink-subtle)] group-hover:text-[var(--accent)] group-hover:bg-[var(--accent-soft)] transition-colors duration-300">
+              <div className="w-11 h-11 rounded-[4px] bg-[var(--surface-3)] flex items-center justify-center text-[var(--ink-subtle)] group-hover:text-[var(--accent)] group-hover:bg-[var(--accent-soft)] transition-colors duration-300">
                 <Mail className="w-5 h-5" />
               </div>
               <div>
@@ -69,8 +69,8 @@ export function ContactSection() {
               </div>
             </a>
 
-            <div className="flex items-center gap-4 p-4 bg-[var(--surface-2)] border border-[var(--hairline)] rounded-[14px]">
-              <div className="w-11 h-11 rounded-[12px] bg-[var(--surface-3)] flex items-center justify-center text-[var(--ink-subtle)]">
+            <div className="flex items-center gap-4 p-4 bg-[var(--surface-2)] border border-[var(--hairline)] rounded-[4px]">
+              <div className="w-11 h-11 rounded-[4px] bg-[var(--surface-3)] flex items-center justify-center text-[var(--ink-subtle)]">
                 <MapPin className="w-5 h-5" />
               </div>
               <div>
@@ -92,12 +92,12 @@ export function ContactSection() {
             <p className="text-sm text-[var(--ink-subtle)] mb-6">
               如果我的文章对你有帮助，可以扫码支持。
             </p>
-            <div className="relative w-52 h-52 bg-white p-2 border border-[var(--hairline)] rounded-[14px] overflow-hidden">
+            <div className="qr-sticker relative w-52 h-52 bg-white p-2 border border-[var(--hairline)] overflow-hidden">
               <Image
                 src="/images/reward-qrcode.jpg"
                 alt="观烬的微信赞赏码"
                 fill
-                className="object-contain rounded-[10px]"
+                className="object-contain rounded-[4px]"
               />
             </div>
             <p className="index-num mt-5">WECHAT PAY / 微信赞赏</p>
