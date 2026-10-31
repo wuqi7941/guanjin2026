@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { bumpCounter, collectEgg } from '@/lib/eggs'
 import { m, AnimatePresence } from 'framer-motion'
 import { EASE_IN, EASE_OUT } from '@/lib/motion'
 
@@ -53,7 +54,7 @@ export function PageTransition() {
         setPhase('idle')
       }, 3000)
       /* 200ms ≈ 墨层铺满（0.16s）+ 余量：铺满后再换页，避免新页从墨层边缘露出 */
-      window.setTimeout(() => router.push(href), 200)
+      window.setTimeout(() => router.push(href), 260)
     },
     [router, clearSafety],
   )
@@ -84,7 +85,9 @@ export function PageTransition() {
          由墨层铺满再 router.push，过渡与路由时机才可控。
          带 data-flip 的链接（上一篇/下一篇）换成纸页翻过去的样式。 */
       e.preventDefault()
-      beginWipe(url.pathname + url.search + url.hash, a.hasAttribute('data-flip') ? 'paper' : 'ink')
+      const isFlip = a.hasAttribute('data-flip')
+      if (isFlip && bumpCounter('flip', 10) >= 10) collectEgg('flip')
+      beginWipe(url.pathname + url.search + url.hash, isFlip ? 'paper' : 'ink')
     }
     document.addEventListener('click', onClick, true)
     return () => document.removeEventListener('click', onClick, true)
@@ -134,7 +137,7 @@ export function PageTransition() {
           className="wipe-seal"
           initial={{ opacity: 0, scale: 1.5, rotate: -10 }}
           animate={{ opacity: 1, scale: 1, rotate: -5 }}
-          transition={{ duration: 0.18, ease: EASE_OUT }}
+          transition={{ duration: 0.24, ease: EASE_OUT }}
           aria-hidden
         >
           余
@@ -147,7 +150,7 @@ export function PageTransition() {
           initial={{ scaleX: phase === 'out' ? 0 : 1 }}
           animate={{ scaleX: phase === 'out' ? 1 : 0 }}
           transition={{
-            duration: phase === 'out' ? 0.16 : 0.22,
+            duration: phase === 'out' ? 0.22 : 0.28,
             ease: phase === 'out' ? EASE_IN : EASE_OUT,
           }}
           onAnimationComplete={() => {

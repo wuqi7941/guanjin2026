@@ -26,6 +26,14 @@ export type EggKey =
   | 'shelf'
   | 'rainoff'
   | 'silence'
+  | 'moon'
+  | 'week'
+  | 'year'
+  | 'tenth'
+  | 'playten'
+  | 'themeflip'
+  | 'flip'
+  | 'search3'
 
 export interface EggMeta {
   key: EggKey
@@ -223,6 +231,70 @@ export const EGGS: EggMeta[] = [
     how: '打开一篇文章，不滚不动，等一分钟',
     effect: '点亮',
   },
+  {
+    key: 'moon',
+    label: '月半',
+    hint: '在月中的那一天来过',
+    where: '任意页面',
+    how: '每月十五号打开站点',
+    effect: '点亮',
+  },
+  {
+    key: 'week',
+    label: '连着七天',
+    hint: '一口气来了一个星期',
+    where: '任意页面',
+    how: '连续七天每天都来一次',
+    effect: '点亮（火没灭，人也没走）',
+  },
+  {
+    key: 'year',
+    label: '一年',
+    hint: '很久很久以后，还记得这里',
+    where: '任意页面',
+    how: '第一次来之后，隔一年再来',
+    effect: '点亮',
+  },
+  {
+    key: 'tenth',
+    label: '十篇',
+    hint: '认认真真读完了十篇',
+    where: '文章页',
+    how: '把十篇文章各自读到最底',
+    effect: '点亮',
+  },
+  {
+    key: 'playten',
+    label: '十首',
+    hint: '让这里的歌陪你听完十首',
+    where: '播放器',
+    how: '把十首歌分别听到结束',
+    effect: '点亮',
+  },
+  {
+    key: 'themeflip',
+    label: '开关',
+    hint: '把灯开开关关，来回十次',
+    where: '右上角',
+    how: '切换明暗主题十次',
+    effect: '点亮',
+  },
+  {
+    key: 'flip',
+    label: '翻书',
+    hint: '靠「上一篇 / 下一篇」翻了十次',
+    where: '文章页',
+    how: '用翻页入口连续看十篇',
+    effect: '点亮',
+  },
+  {
+    key: 'search3',
+    label: '三次',
+    hint: '一分钟里搜了三次，都没找到',
+    where: '搜索框',
+    how: '一分钟内连续搜索三次',
+    effect: '点亮',
+  },
 ]
 
 const EGGS_KEY = 'embers_eggs'
@@ -259,8 +331,7 @@ export function bumpVisit(): number {
     sessionStorage.setItem(SESSION_KEY, '1')
     const n = prev + 1
     localStorage.setItem(VISITS_KEY, String(n))
-    return n
-  } catch {
+    return n  } catch {
     return 0
   }
 }
@@ -276,4 +347,64 @@ export function getVisits(): number {
 export function isNightNow(): boolean {
   const h = new Date().getHours()
   return h >= 0 && h < 5
+}
+
+/* ============ 到访日历：连续天数 / 首次到访 ============ */
+
+const DAYS_KEY = 'embers_days'
+const FIRST_KEY = 'embers_first_seen'
+
+function isoDay(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/* 记录今天来过，返回连续到访天数（只保留最近 30 天） */
+export function recordVisitDay(): number {
+  try {
+    const today = isoDay()
+    if (!localStorage.getItem(FIRST_KEY)) localStorage.setItem(FIRST_KEY, String(Date.now()))
+    const raw = localStorage.getItem(DAYS_KEY)
+    const days: string[] = raw ? JSON.parse(raw) : []
+    if (!days.includes(today)) {
+      days.push(today)
+      days.sort()
+      while (days.length > 30) days.shift()
+      localStorage.setItem(DAYS_KEY, JSON.stringify(days))
+    }
+    /* 从今天往回数连续天数 */
+    let streak = 0
+    const probe = new Date()
+    for (let i = 0; i < 30; i++) {
+      const key = isoDay(probe)
+      if (days.includes(key)) {
+        streak++
+        probe.setDate(probe.getDate() - 1)
+      } else break
+    }
+    return streak
+  } catch {
+    return 0
+  }
+}
+
+/* 距离第一次来访过了多少天 */
+export function daysSinceFirstVisit(): number {
+  try {
+    const first = parseInt(localStorage.getItem(FIRST_KEY) || '0', 10)
+    if (!first) return 0
+    return Math.floor((Date.now() - first) / 86400000)
+  } catch {
+    return 0
+  }
+}
+
+/* 通用计数器：到 n 就点亮一枚暗语 */
+export function bumpCounter(key: string, n: number): number {
+  try {
+    const cur = (parseInt(localStorage.getItem('embers_c_' + key) || '0', 10) || 0) + 1
+    localStorage.setItem('embers_c_' + key, String(cur))
+    return cur >= n ? cur : cur
+  } catch {
+    return 0
+  }
 }

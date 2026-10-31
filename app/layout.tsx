@@ -11,6 +11,8 @@ import { ThemeColorSync } from '@/components/ThemeColorSync'
 import { GlowFollow } from '@/components/GlowFollow'
 import { PaperLight } from '@/components/PaperLight'
 import { CopyGuard } from '@/components/CopyGuard'
+import { ScrollProgress } from '@/components/ScrollProgress'
+import { QuickNav } from '@/components/QuickNav'
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
@@ -102,6 +104,8 @@ export default function RootLayout({
           <GlowFollow />
           <PaperLight />
           <CopyGuard />
+          <ScrollProgress />
+          <QuickNav />
         </Providers>
       </body>
     </html>

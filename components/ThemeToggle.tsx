@@ -5,6 +5,7 @@ import { useTheme } from 'next-themes'
 import { m, AnimatePresence } from 'framer-motion'
 import { Sun, Moon } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { bumpCounter, collectEgg } from '@/lib/eggs'
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
@@ -28,7 +29,10 @@ export function ThemeToggle() {
     <m.button
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
-      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      onClick={() => {
+        setTheme(isDark ? 'light' : 'dark')
+        if (bumpCounter('themeflip', 10) >= 10) collectEgg('themeflip')
+      }}
       className="relative w-10 h-10 rounded-full card flex items-center justify-center overflow-hidden"
       aria-label={isDark ? '切换到亮色模式' : '切换到暗色模式'}
     >

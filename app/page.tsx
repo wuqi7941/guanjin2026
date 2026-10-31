@@ -4,6 +4,7 @@ import { DailyLine } from '@/components/DailyLine'
 import { NovelBanner } from '@/components/NovelBanner'
 import { LatestPostsSection } from '@/components/LatestPostsSection'
 import { ExhibitMarquee } from '@/components/ExhibitMarquee'
+import { ResumeBanner } from '@/components/ResumeBanner'
 import { Footer } from '@/components/Footer'
 import { AuroraBackground } from '@/components/AuroraBackground'
 import Link from 'next/link'
@@ -28,6 +29,9 @@ export default function Home() {
       <AuroraBackground />
       <Navbar />
       <Hero />
+
+      {/* 上次没读完的，接着读 */}
+      <ResumeBanner titles={Object.fromEntries(all.map((p) => [p.slug, p.title]))} />
 
       {/* 最新一篇：一眼知道今天有没有新东西 */}
       {latest && (

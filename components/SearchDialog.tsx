@@ -115,6 +115,19 @@ export function SearchDialog() {
 
   const hits = useMemo(() => search(docs, q), [docs, q])
 
+  /* 暗语「三次」：一分钟里搜了三次，都没找到 */
+  const missRef = useRef<number[]>([])
+  useEffect(() => {
+    if (!ready || q.trim().length < 2) return
+    if (hits.length > 0) return
+    const now = Date.now()
+    missRef.current = [...missRef.current.filter((t) => now - t < 60000), now]
+    if (missRef.current.length >= 3) {
+      collectEgg('search3')
+      missRef.current = []
+    }
+  }, [q, hits.length, ready])
+
   const openDialog = useCallback(() => {
     setOpen(true)
     try {
@@ -326,7 +339,7 @@ export function SearchDialog() {
                   </span>
                   <span className="search-door-text">
                     <span className="search-door-title">门开了</span>
-                    <span className="search-door-sub">暗语全册 · 十三枚的触发方式</span>
+                    <span className="search-door-sub">暗语全册 · 三十一枚的触发方式</span>
                   </span>
                 </button>
               ) : (
@@ -352,26 +365,37 @@ export function SearchDialog() {
                     <p className="search-hint">没有找到「{q.trim()}」。换个词试试，比如「琴」「深夜」「高考」。</p>
                   )}
 
-                  {hits.map((hit, i) => (
-                    <button
-                      type="button"
-                      key={hit.doc.slug}
-                      className={`search-hit ${i === active ? 'is-active' : ''}`}
-                      onMouseEnter={() => setActive(i)}
-                      onClick={() => go(hit.doc.slug)}
-                    >
-                      <span className="search-hit-title">
-                        <Highlight text={hit.doc.title} q={q.trim()} />
-                      </span>
-                      <span className="search-hit-meta">
-                        {hit.doc.date.replace(/-/g, '.')}
-                        {hit.doc.tags[0] ? ` · ${hit.doc.tags[0]}` : ''}
-                      </span>
-                      <span className="search-hit-snippet">
-                        <Highlight text={hit.snippet} q={q.trim()} />
-                      </span>
-                    </button>
-                  ))}
+                  {hits.map((hit, i) => {
+                    /* 分组：标题命中的排前面，正文里提到的另起一段 */
+                    const kw = q.trim().toLowerCase()
+                    const inTitle = hit.doc.title.toLowerCase().includes(kw)
+                    const prevInTitle = i > 0 ? hits[i - 1].doc.title.toLowerCase().includes(kw) : true
+                    const showTitleHead = i === 0 && inTitle
+                    const showBodyHead = i > 0 && !inTitle && prevInTitle
+                    return (
+                      <div key={hit.doc.slug}>
+                        {showTitleHead && <p className="search-group-label">标题里</p>}
+                        {showBodyHead && <p className="search-group-label">正文里提到</p>}
+                        <button
+                          type="button"
+                          className={`search-hit ${i === active ? 'is-active' : ''}`}
+                          onMouseEnter={() => setActive(i)}
+                          onClick={() => go(hit.doc.slug)}
+                        >
+                          <span className="search-hit-title">
+                            <Highlight text={hit.doc.title} q={q.trim()} />
+                          </span>
+                          <span className="search-hit-meta">
+                            {hit.doc.date.replace(/-/g, '.')}
+                            {hit.doc.tags[0] ? ` · ${hit.doc.tags[0]}` : ''}
+                          </span>
+                          <span className="search-hit-snippet">
+                            <Highlight text={hit.snippet} q={q.trim()} />
+                          </span>
+                        </button>
+                      </div>
+                    )
+                  })}
                 </>
               )}
             </div>

@@ -4017,3 +4017,265 @@ html::-webkit-scrollbar-thumb:hover {
 h1.font-display {
   letter-spacing: -0.01em;
 }
+
+/* ================================================================
+   UI 优化第一批（2026-10-31 夜）
+   ================================================================ */
+
+/* 1 · 导航下拉：文章 → 全部 / 年轮 / 星图 / 收藏夹 */
+.nav-sub {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  min-width: 11rem;
+  padding: 0.4rem;
+  display: grid;
+  gap: 1px;
+  background: color-mix(in srgb, var(--surface-1) 96%, transparent);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  box-shadow: 0 20px 44px -28px rgba(35, 26, 18, 0.45);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+  z-index: 60;
+}
+
+.group:hover .nav-sub,
+.group:focus-within .nav-sub {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.nav-sub-item {
+  padding: 0.5rem 0.7rem;
+  border-radius: 3px;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.nav-sub-item:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.nav-sub-item.is-active {
+  color: var(--accent);
+}
+
+/* 5 · 暗色下正文链接要看得出来是链接 */
+html.dark .prose-custom a {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+html.dark .prose-custom a:hover {
+  text-decoration-color: var(--accent);
+}
+
+/* 6 · 搜索结果分组标题 */
+.search-group-label {
+  margin: 0.5rem 0 0.15rem;
+  padding: 0 0.15rem;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.2em;
+  color: var(--ink-tertiary);
+  text-transform: uppercase;
+}
+
+/* 8 · 卡片日期上移到标题行 */
+.acard-date {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  color: var(--ink-tertiary);
+  margin-left: 0.5rem;
+  margin-right: auto;
+}
+
+/* 10 · 文章页返回：桌面是文字，手机收成圆箭头 */
+.post-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 2.5rem;
+  font-size: 0.85rem;
+  color: var(--ink-subtle);
+  transition: color 0.16s ease;
+}
+
+.post-back:hover {
+  color: var(--accent);
+}
+
+@media (max-width: 639px) {
+  .post-back {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 1.25rem;
+    justify-content: center;
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface-1) 60%, transparent);
+  }
+  .post-back-text {
+    display: none;
+  }
+}
+
+/* 3 · 首页「继续阅读」条 */
+.resume-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.65rem clamp(1rem, 4vw, 3rem);
+  border-top: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  transition: background-color 0.2s ease;
+}
+
+.resume-strip:hover {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
+.resume-strip-label {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+  color: var(--accent);
+}
+
+.resume-strip-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 0.98rem;
+}
+
+.resume-strip-bar {
+  flex: 1;
+  min-width: 3rem;
+  height: 2px;
+  background: var(--hairline);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.resume-strip-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  opacity: 0.65;
+}
+
+.resume-strip-pct {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--ink-tertiary);
+}
+
+/* ================================================================
+   整体观感第二批（2026-10-31 深夜）
+   ================================================================ */
+
+/* 顶部阅读进度线：细到像纸边的一道压痕 */
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 70;
+  transform: scaleX(0);
+  transform-origin: left center;
+  opacity: 0;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 75%, transparent), var(--accent));
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+/* 按钮：按下时沉一下，别只是变色 */
+.btn-primary,
+.btn-secondary {
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease,
+    transform 0.12s ease, box-shadow 0.18s ease;
+}
+
+.btn-primary:active,
+.btn-secondary:active {
+  transform: translateY(1px);
+}
+
+/* 卡片摘要统一两行，卡片高度更整齐 */
+.acard-excerpt {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 数字统一等宽，日期列不抖 */
+.tabular-nums,
+.acard-meta,
+.acard-date,
+.search-hit-meta,
+.rings-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 移动端：底部播放器给安全区留位置 */
+@media (max-width: 639px) {
+  .mp-bar {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* 选中态过渡统一 */
+::selection {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+/* 键盘跳转提示（按 g 后浮出） */
+.quick-hint {
+  position: fixed;
+  left: 50%;
+  bottom: 2rem;
+  transform: translateX(-50%);
+  z-index: 95;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-1) 95%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 18px 40px -30px rgba(35, 26, 18, 0.5);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--ink-subtle);
+}
+
+.quick-hint kbd {
+  padding: 0.1rem 0.32rem;
+  margin-right: 0.25rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  background: var(--surface-2);
+  color: var(--ink);
+}

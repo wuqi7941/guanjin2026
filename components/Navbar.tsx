@@ -5,15 +5,29 @@ import { useState } from 'react'
 import { m, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Menu, X, Search } from 'lucide-react'
+import { Menu, X, Search, ChevronDown } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
 
+/* 「文章」下面挂四个去处：全部、年轮、星图、收藏夹。
+   年轮与星图原来是文章列表标题下的小字，等于藏起来了。 */
 const navLinks = [
   { href: '/', label: '首页', idx: '01' },
-  { href: '/blog/', label: '文章', idx: '02' },
+  {
+    href: '/blog/',
+    label: '文章',
+    idx: '02',
+    sub: [
+      { href: '/blog/', label: '全部文章' },
+      { href: '/timeline/', label: '火的年轮' },
+      { href: '/tags/', label: '标签星图' },
+      { href: '/bookmarks/', label: '收藏夹' },
+    ],
+  },
   { href: '/about', label: '关于', idx: '03' },
   { href: '/contact/', label: '联系', idx: '04' },
 ]
+
+const SUB_PREFIX = ['/blog/', '/timeline/', '/tags/', '/bookmarks/']
 
 export function Navbar() {
   const pathname = usePathname()
@@ -22,8 +36,12 @@ export function Navbar() {
   const isActive = (href: string) => {
     if (href.includes('#')) return false
     if (href === '/') return pathname === '/'
+    if (href === '/blog/') return SUB_PREFIX.some((p) => pathname.startsWith(p))
     return pathname.startsWith(href)
   }
+
+  const isSubActive = (href: string) =>
+    href === '/blog/' ? pathname.startsWith('/blog/') : pathname.startsWith(href)
 
   return (
     <m.header
@@ -51,7 +69,7 @@ export function Navbar() {
         <div className="flex items-center gap-2">
           <ul className="hidden sm:flex items-center gap-0.5 mr-2">
             {navLinks.map((link) => (
-              <li key={link.href}>
+              <li key={link.href} className={link.sub ? 'relative group' : undefined}>
                 <Link
                   href={link.href}
                   className={`group relative px-3 py-1.5 text-sm transition-colors duration-200 flex items-baseline gap-1.5 border-b-2 ${
@@ -64,7 +82,27 @@ export function Navbar() {
                     {link.idx}
                   </span>
                   {link.label}
+                  {link.sub && (
+                    <ChevronDown
+                      className="w-3 h-3 ml-0.5 opacity-50 transition-transform duration-200 group-hover:rotate-180"
+                      aria-hidden
+                    />
+                  )}
                 </Link>
+
+                {link.sub && (
+                  <div className="nav-sub">
+                    {link.sub.map((s) => (
+                      <Link
+                        key={s.href}
+                        href={s.href}
+                        className={`nav-sub-item${isSubActive(s.href) ? ' is-active' : ''}`}
+                      >
+                        {s.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -108,7 +146,7 @@ export function Navbar() {
                   <Link
                     href={link.href}
                     onClick={() => setOpen(false)}
-                    className={`flex items-center gap-2.5 block px-3 py-2.5 rounded-[4px] text-sm transition-colors ${
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-[4px] text-sm transition-colors ${
                       isActive(link.href)
                         ? 'text-[var(--ink)] bg-[var(--surface-2)]'
                         : 'text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-1)]'
@@ -117,6 +155,25 @@ export function Navbar() {
                     <span className="font-mono text-[10px] text-[var(--accent)]">{link.idx}</span>
                     {link.label}
                   </Link>
+
+                  {link.sub && (
+                    <div className="ml-8 mt-1 space-y-0.5 border-l border-[var(--hairline)] pl-3">
+                      {link.sub.map((s) => (
+                        <Link
+                          key={s.href}
+                          href={s.href}
+                          onClick={() => setOpen(false)}
+                          className={`block px-2 py-2 rounded-[4px] text-[13px] transition-colors ${
+                            isSubActive(s.href)
+                              ? 'text-[var(--accent)]'
+                              : 'text-[var(--ink-subtle)] hover:text-[var(--ink)]'
+                          }`}
+                        >
+                          {s.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

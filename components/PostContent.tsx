@@ -138,6 +138,7 @@ export function PostContent({ post, prev, next }: PostContentProps) {
 
       /* 夜读：暗色主题下读完三篇 */
       if (el.classList.contains('dark') && countFinished() >= 3) collectEgg('nightread')
+      if (countFinished() >= 10) collectEgg('tenth')
 
       /* 雨停：开着雨声读到最底 */
       const w = window as unknown as Record<string, unknown>
@@ -193,12 +194,10 @@ export function PostContent({ post, prev, next }: PostContentProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: EASE }}
         >
-          <Link
-            href="/blog/"
-            className="inline-flex items-center gap-2 text-sm text-[var(--ink-subtle)] hover:text-[var(--accent)] transition-colors mb-10"
-          >
+          {/* 手机上收成一枚圆箭头：导航栏已有「文章」，这行文字等于重复 */}
+          <Link href="/blog/" className="post-back" aria-label="返回文章列表">
             <ArrowLeft className="w-4 h-4" />
-            返回文章列表
+            <span className="post-back-text">返回文章列表</span>
           </Link>
         </m.div>
 
@@ -208,7 +207,19 @@ export function PostContent({ post, prev, next }: PostContentProps) {
           transition={{ duration: 0.8, ease: EASE }}
           className="relative mb-14 group"
         >
-          <span className="poster-number" aria-hidden style={{ fontSize: 'clamp(3.5rem, 12vw, 8rem)', opacity: 0.14 }}>
+          <span
+            className="poster-number"
+            aria-hidden
+            style={{
+              fontSize: 'clamp(3rem, 10vw, 7rem)',
+              opacity: 0.07,
+              left: 'auto',
+              right: 0,
+              top: 'auto',
+              bottom: 0,
+              textAlign: 'right',
+            }}
+          >
             N°01
           </span>
 

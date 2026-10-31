@@ -31,7 +31,7 @@ function paperAge(date: string): number {
 
 export function ArticleCard({ post, index = 0 }: ArticleCardProps) {
   const num = String(index + 1).padStart(2, '0')
-  const meta = [post.date.replace(/-/g, '.'), post.wordCount, post.readingTime]
+  const meta = [post.wordCount, post.readingTime]
     .filter(Boolean)
     .join(' · ')
   const age = paperAge(post.date)
@@ -51,6 +51,7 @@ export function ArticleCard({ post, index = 0 }: ArticleCardProps) {
       >
         <div className="acard-top">
           <span className="acard-no">No.{num}</span>
+          <span className="acard-date">{post.date.replace(/-/g, '.')}</span>
           <span className="acard-tag">{post.tags[0] ?? '随笔'}</span>
           {post.featured && <span className="seal-mini">得意</span>}
         </div>

@@ -28,7 +28,7 @@ export function HeroWordmark() {
           </m.span>
         ))}
       </span>
-      <span className="hero-ember block mt-4 text-3xl sm:text-5xl lg:text-[4.5rem] font-light tracking-[0.24em] leading-none">
+      <span className="hero-ember block mt-3 text-lg sm:text-2xl lg:text-[2.4rem] font-light tracking-[0.34em] leading-none opacity-80">
         {EMBERS_WORD.split('').map((ch, i) => (
           <m.span
             key={i}

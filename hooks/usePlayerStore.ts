@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { PLAYLIST, TRACK_URL, NETEASE_URL, META_URL } from '@/lib/playlist'
-import { collectEgg } from '@/lib/eggs'
+import { bumpCounter, collectEgg } from '@/lib/eggs'
 
 const LS_KEY = 'embers_mp'
 
@@ -390,6 +390,8 @@ export function usePlayerStore() {
       }
     },
     onAudioEnded: (e: React.SyntheticEvent<HTMLAudioElement>) => {
+      /* 暗语「十首」：听完十首 */
+      if ((bumpCounter('playten', 10) >= 10)) collectEgg('playten')
       const a = e.currentTarget
       if (a.duration && a.duration < 65) {
         if (swapSource()) return

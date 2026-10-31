@@ -57,10 +57,11 @@ export function Footer() {
               { href: '/', label: '首页', idx: '01' },
               { href: '/blog/', label: '文章', idx: '02' },
               { href: '/about', label: '关于', idx: '03' },
-              { href: '/#latest', label: '最新', idx: '04' },
+              { href: '/timeline/', label: '年轮', idx: '04' },
               { href: '/contact/', label: '联系', idx: '05' },
-              { href: '/feed.xml', label: '订阅 RSS', idx: '06' },
+              { href: '/tags/', label: '星图', idx: '06' },
               { href: '/bookmarks/', label: '收藏夹', idx: '07' },
+              { href: '/feed.xml', label: '订阅 RSS', idx: '08' },
             ].map((l) =>
               /* /feed.xml 是 route handler：用原生 <a>，避免 Link 对静态文件做 RSC 预取产生 404 */
               l.href === '/feed.xml' ? (
