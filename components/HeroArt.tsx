@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { EASE } from '@/lib/motion'
 import { useEffect, useState } from 'react'
@@ -105,7 +105,7 @@ export function HeroArt() {
                   type="button"
                   onClick={() => setFullOpen(false)}
                   aria-label="关闭全屏钢琴"
-                  className="absolute top-4 right-4 z-30 inline-flex items-center gap-1.5 rounded-full border border-[var(--hairline-strong)] bg-[var(--surface-1)]/95 shadow-sm px-3 py-1.5 font-mono text-[11px] tracking-[0.18em] uppercase text-[var(--ink)] backdrop-blur-sm transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                  className="absolute top-4 right-4 z-[var(--z-content)] inline-flex items-center gap-1.5 rounded-[3px] border border-[var(--hairline-strong)] bg-[var(--surface-1)]/95 shadow-sm px-3 py-1.5 font-mono text-[11px] tracking-[0.18em] uppercase text-[var(--ink)] backdrop-blur-sm transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
                 >
                   <X className="w-3.5 h-3.5" />
                   收起

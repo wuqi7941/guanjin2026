@@ -282,6 +282,16 @@ button,
      而 41 处规则写的是 var(--font-mono)——这里补上定义，否则整条声明失效、回退宋体。 */
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
+  /* 层级令牌：以后加层只从这几档里挑，不再随手写裸数字 */
+  --z-base: 1;      /* 渐晕、背景 */
+  --z-content: 10;  /* 正文内容块 */
+  --z-nav: 50;      /* 导航栏 */
+  --z-progress: 70; /* 顶部进度线 */
+  --z-wipe: 90;     /* 墨染 / 翻页遮罩 */
+  --z-seal: 91;     /* 过渡印章 */
+  --z-toast: 95;    /* 提示条（快捷跳转、复制锁） */
+  --z-dialog: 200;  /* 搜索、播放器面板 */
+
   /* 夜墨：深炭底，纸白字，朱印为唯一强调 */
   --canvas: #17130e;
   --surface-1: #1e1913;
@@ -421,7 +431,6 @@ html:not(.scrolling) .grain::after {
 
 /* 触屏/移动端：噪点静止，节省合成层开销 */
 @media (pointer: coarse) {
-  .grain::after { animation: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -620,19 +629,6 @@ main img:hover {
 }
 
 /* 海报色域块：安静暖调陈列面板（无花哨渐变） */
-.poster-block.violet { background: linear-gradient(160deg, #1e1a18 0%, #161310 100%); }
-.poster-block.ember { background: linear-gradient(160deg, #211c15 0%, #191409 100%); }
-.poster-block.coal { background: linear-gradient(160deg, #1c1812 0%, #15110c 100%); }
-.poster-block.rust { background: linear-gradient(160deg, #221a13 0%, #19120d 100%); }
-.poster-block.ash { background: linear-gradient(160deg, #201b14 0%, #181309 100%); }
-.poster-block.blood { background: linear-gradient(160deg, #201614 0%, #18110f 100%); }
-
-.light .poster-block.violet { background: linear-gradient(160deg, #f4ece6 0%, #e9ddd2 100%); }
-.light .poster-block.ember { background: linear-gradient(160deg, #fbf6eb 0%, #f1e8d8 100%); }
-.light .poster-block.coal { background: linear-gradient(160deg, #f6efe3 0%, #ebe0ce 100%); }
-.light .poster-block.rust { background: linear-gradient(160deg, #faf1e4 0%, #f0e3d0 100%); }
-.light .poster-block.ash { background: linear-gradient(160deg, #f7f0e2 0%, #ece0cc 100%); }
-.light .poster-block.blood { background: linear-gradient(160deg, #f6eee6 0%, #ece0d4 100%); }
 
 /* ============ 表面：锐利、印刷、海报边框 ============ */
 .card {
@@ -676,8 +672,6 @@ main img:hover {
 }
 
 /* 展厅灯光入场（结合 framer-motion variants 的过渡由 JS 控制） */
-@media (prefers-reduced-motion: reduce) {
-}
 
 .card-static {
   background: color-mix(in srgb, var(--surface-1) 76%, transparent);
@@ -934,12 +928,6 @@ html.scrolling .glass-nav {
   }
 }
 
-@media (hover: hover) and (min-width: 768px) {
-}
-
-@media (hover: none), (max-width: 767px) {
-}
-
 /* 纸张层叠：卡片下缘露出错位纸边，悬停/按压时收拢 */
 .paper-stack {
   position: relative;
@@ -956,11 +944,6 @@ html.scrolling .glass-nav {
   transform: translate(6px, 8px) rotate(0.5deg);
   transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
-}
-
-.paper-stack:hover::before,
-.paper-stack:active::before {
-  transform: translate(3px, 4px) rotate(0.2deg);
 }
 
 /* 手作分隔：两端渐隐的墨线（起笔收笔） */
@@ -1034,7 +1017,9 @@ html.scrolling .glass-nav {
 /* ============ PROSE（印刷排版） ============ */
 /* 中宋英无：英文/数字走 Geist（无中文字形自动回退），中文落宋体栈 */
 .prose-custom {
-  font-family: var(--font-geist-sans), "Songti SC", "Noto Serif SC", "Source Han Serif SC", "STSong", "SimSun", serif;
+  /* 拉丁改衬线：Geist 的 x-height 远高于宋体，同字号下英文会「大一号」；
+     Georgia 与宋体同属衬线，混排才平得下来 */
+  font-family: Georgia, "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", "Times New Roman", serif;
   font-size: 1.125rem;
   line-height: 1.9;
   letter-spacing: 0.014em;
@@ -1525,12 +1510,9 @@ body {
 }
 
 /* 电脑端：展品卡悬停由 .photo-tilt 接管（扶正 + 抬起），此处只补光影与标题 */
-@media (hover: hover) and (min-width: 768px) {
-}
 
 /* 手机端：避免过宽内边距挤压内容 */
-@media (max-width: 639px) {
-}
+
 /* ================================================================
    纸本杂志 2.0 · 条目卡与分区栏（2026-10-25）
    ---------------------------------------------------------------
@@ -2130,7 +2112,7 @@ body {
 .search-overlay {
   position: fixed;
   inset: 0;
-  z-index: 95;
+  z-index: var(--z-toast);
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -2459,10 +2441,6 @@ body {
   from {
     opacity: 0;
     transform: translateY(7px) scale(0.99);
-  }
-  to {
-    opacity: 1;
-    transform: none;
   }
 }
 
@@ -3732,7 +3710,7 @@ html:not(.is-unlocked) [contenteditable='true'] {
   left: 50%;
   bottom: 5.5rem;
   transform: translateX(-50%);
-  z-index: 96;
+  z-index: var(--z-toast);
   padding: 0.55rem 0.95rem;
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--hairline));
   border-radius: var(--radius-md);
@@ -3930,7 +3908,7 @@ html.dark {
   position: fixed;
   left: 50%;
   top: 50%;
-  z-index: 91;
+  z-index: var(--z-seal);
   width: 96px;
   height: 96px;
   margin: -48px 0 0 -48px;
@@ -4202,7 +4180,7 @@ html.dark .prose-custom a:hover {
   left: 0;
   right: 0;
   height: 2px;
-  z-index: 70;
+  z-index: var(--z-progress);
   transform: scaleX(0);
   transform-origin: left center;
   opacity: 0;
@@ -4254,7 +4232,7 @@ html.dark .prose-custom a:hover {
   left: 50%;
   bottom: 2rem;
   transform: translateX(-50%);
-  z-index: 95;
+  z-index: var(--z-toast);
   display: flex;
   gap: 0.5rem;
   padding: 0.45rem 0.6rem;
@@ -4337,7 +4315,7 @@ body::after {
   content: '';
   position: fixed;
   inset: 0;
-  z-index: 1;
+  z-index: var(--z-base);
   pointer-events: none;
   background: radial-gradient(
     120% 90% at 50% 42%,

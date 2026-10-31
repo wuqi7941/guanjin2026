@@ -160,7 +160,7 @@ export function PageTransition() {
                露出旧页（≥40ms 空窗，看着就是闪一下） */
             if (phase === 'in') setPhase('idle')
           }}
-          className={`${tone === 'paper' ? 'wipe-paper' : 'wipe-ink'} fixed inset-0 z-[90] pointer-events-auto`}
+          className={`${tone === 'paper' ? 'wipe-paper' : 'wipe-ink'} fixed inset-0 z-[var(--z-wipe)] pointer-events-auto`}
           aria-hidden
         />
       )}
