@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from 'next'
+import fs from 'node:fs'
+import path from 'node:path'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
@@ -13,6 +15,10 @@ import { PaperLight } from '@/components/PaperLight'
 import { CopyGuard } from '@/components/CopyGuard'
 import { ScrollProgress } from '@/components/ScrollProgress'
 import { QuickNav } from '@/components/QuickNav'
+
+/* 构建期读一次字体样式（33 条 @font-face，约 11.7KB），内联进 <head>。
+   静态导出下这是安全的：文件在 public/，构建时必然存在。 */
+const FONT_CSS = fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', 'fonts.css'), 'utf8')
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
@@ -64,8 +70,11 @@ export default function RootLayout({
               "try{if(!localStorage.getItem('embers_lit')){document.documentElement.classList.add('first-light');localStorage.setItem('embers_lit','1')}}catch(e){}",
           }}
         />
-        {/* 字体本地托管（原 Google Fonts 国内访问不稳，导致回退宋体、观感打折） */}
-        <link rel="stylesheet" href="/fonts/fonts.css" />
+        {/* 字体本地托管（原 Google Fonts 国内访问不稳，导致回退宋体、观感打折）。
+            这里把 11.7KB 的 @font-face 直接内联：首屏少一个阻塞请求，
+            也彻底绕开「无哈希文件名的 CSS 被边缘缓存锁死」这个坑——
+            外链 /fonts/fonts.css 一旦被 CDN 按长 TTL 缓存，改字体要等缓存过期才生效。 */}
+        <style dangerouslySetInnerHTML={{ __html: FONT_CSS }} />
         {/* 首屏标题英文字体预载（Cormorant 拉丁分片，避免标题字体闪烁） */}
         <link
           rel="preload"
