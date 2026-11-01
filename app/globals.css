@@ -1039,9 +1039,11 @@ html.scrolling .glass-nav {
   line-height: 1.4;
 }
 
-.prose-custom h1 { font-size: 1.8rem; letter-spacing: 0.01em; margin: 3.5rem 0 1.5rem; }
-.prose-custom h2 { font-size: 1.5rem; letter-spacing: 0.005em; margin: 3.25rem 0 1.25rem; }
-.prose-custom h3 { font-size: 1.22rem; margin: 2.5rem 0 1rem; }
+/* 标题层级：正文 1.125rem，层级差至少 1.6 倍——
+   原来 h2 只比正文大 1.33 倍，长文读起来「全是中号字」，章节扫不出来 */
+.prose-custom h1 { font-size: 2.1rem; letter-spacing: 0.01em; margin: 3.5rem 0 1.5rem; }
+.prose-custom h2 { font-size: 1.8rem; letter-spacing: 0.005em; margin: 3.75rem 0 1.35rem; }
+.prose-custom h3 { font-size: 1.32rem; margin: 2.5rem 0 1rem; }
 .prose-custom h2:first-child, .prose-custom h3:first-child { margin-top: 0; }
 
 .prose-custom h2,
@@ -3603,7 +3605,8 @@ html.first-light::after {
 
 .marquee-title {
   font-family: var(--display);
-  font-size: 1rem;
+  /* 跑马灯是「一眼扫过」的东西，1rem 跟正文混在一起等于隐身；加大到 1.3rem 才有海报感 */
+  font-size: 1.3rem;
 }
 
 .marquee-tag {
@@ -3632,7 +3635,7 @@ html.first-light::after {
     animation-duration: 72s;
   }
   .marquee-title {
-    font-size: 0.92rem;
+    font-size: 1.05rem;
   }
 
   /* 首屏：标题与照片之间别留那么大的空 */
@@ -3666,8 +3669,8 @@ html.first-light::after {
   padding: 1rem 0;
 }
 
+/* 字号交给上面 1.3rem 的基础定义——这里原来写 1.08rem 把它盖回去了，两处打架 */
 .marquee-title {
-  font-size: 1.08rem;
   color: var(--ink);
 }
 
