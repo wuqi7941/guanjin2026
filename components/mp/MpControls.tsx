@@ -65,6 +65,12 @@ export const MpControls = memo(function MpControls(props: MpControlsProps) {
     onSeekTo(ratioFromX(e.clientX))
     setDragPct(null)
   }
+  /* 取消（手指滑出屏幕/系统中断）只复位 UI，不触发 seek——
+     原先和 onPointerUp 共用，拖一半被系统打断也会突然跳进度 */
+  const onPointerCancel = () => {
+    dragging.current = false
+    setDragPct(null)
+  }
 
   return (
     <>
@@ -74,7 +80,7 @@ export const MpControls = memo(function MpControls(props: MpControlsProps) {
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
+          onPointerCancel={onPointerCancel}
           className="relative h-5 flex items-center cursor-pointer group touch-none select-none"
           role="slider"
           aria-label="播放进度"

@@ -24,6 +24,16 @@ export function ScrollManager() {
     setShow((s) => (s === pass ? s : pass))
   })
 
+  /* 卸载时把 .scrolling 摘掉：AuroraBackground 靠这个类决定暂停粒子，
+     残留会把背景永久冻住 */
+  useEffect(
+    () => () => {
+      if (stopTimer.current) clearTimeout(stopTimer.current)
+      document.documentElement.classList.remove('scrolling')
+    },
+    [],
+  )
+
   /* 恢复本页上次滚动位置 */
   useEffect(() => {
     const saved = sessionStorage.getItem(STORE_KEY)

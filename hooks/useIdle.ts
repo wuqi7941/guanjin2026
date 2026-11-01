@@ -19,6 +19,15 @@ export function useIdle(timeout = 15000) {
       }, timeout)
     }
 
+    /* 页面隐藏时不计时：原来的实现里定时器链会一直跑，
+       用户离开 15 分钟再回来，下一帧就被判"发呆"——人明明刚回来 */
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        lastEvent = Date.now()
+        arm()
+      } else if (timer) clearTimeout(timer)
+    }
+
     const onActivity = () => {
       const now = Date.now()
       if (now - lastEvent < 500) return
@@ -36,10 +45,12 @@ export function useIdle(timeout = 15000) {
       'touchstart',
     ]
     events.forEach((e) => window.addEventListener(e, onActivity, { passive: true }))
+    document.addEventListener('visibilitychange', onVisibility)
     arm()
     return () => {
       if (timer) clearTimeout(timer)
       events.forEach((e) => window.removeEventListener(e, onActivity))
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [timeout])
 

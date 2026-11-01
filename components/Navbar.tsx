@@ -46,10 +46,15 @@ export function Navbar() {
   const isSubActive = (href: string) =>
     href === '/blog/' ? pathname.startsWith('/blog/') : pathname.startsWith(href)
 
-  /* 移动菜单：Esc 关、点外面关、开着锁背后滚动；关上把焦点还给汉堡钮 */
+  /* 移动菜单：Esc 关、点外面关、开着锁背后滚动；关上把焦点还给汉堡钮
+     （点链接导航走的时候不还焦点——页面都要换了，抢回焦点只会让地址栏闪一下） */
   useEffect(() => {
     if (!open) return
     const unlock = lockScroll()
+    let navigated = false
+    const onNavClick = () => {
+      navigated = true
+    }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
     }
@@ -57,13 +62,16 @@ export function Navbar() {
       const t = e.target as HTMLElement | null
       if (!t?.closest('.glass-nav')) setOpen(false)
     }
+    const menuEl = menuRef.current
+    menuEl?.addEventListener('click', onNavClick, true)
     document.addEventListener('keydown', onKey)
     document.addEventListener('click', onClick)
     return () => {
       unlock()
+      menuEl?.removeEventListener('click', onNavClick, true)
       document.removeEventListener('keydown', onKey)
       document.removeEventListener('click', onClick)
-      burgerRef.current?.focus()
+      if (!navigated) burgerRef.current?.focus()
     }
   }, [open])
 

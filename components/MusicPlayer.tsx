@@ -1,7 +1,7 @@
 'use client'
 
 import { AnimatePresence, m } from 'framer-motion'
-import { useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { Disc3 } from 'lucide-react'
 import { usePlayerStore, fmt } from '@/hooks/usePlayerStore'
 import { PLAYLIST } from '@/lib/playlist'
@@ -34,12 +34,19 @@ export function MusicPlayer() {
     setFull(true)
   }
 
-  /* Esc 关面板：仅面板打开时监听；沉浸歌词开着时由它自己处理 Esc，这里让路 */
+  /* Esc 关面板：仅面板打开时监听；沉浸歌词开着时由它自己处理 Esc，这里让路。
+     用 ref 而不是每次 keydown 查 DOM */
+  const fullRef = useRef(false)
+  const closeFull = useCallback(() => setFull(false), [])
+  useEffect(() => {
+    fullRef.current = full
+  }, [full])
+
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
-      if (document.querySelector('.mp-full')) return
+      if (fullRef.current) return
       setOpen(false)
     }
     document.addEventListener('keydown', onKey)
@@ -143,7 +150,7 @@ export function MusicPlayer() {
             pct={pct}
             timeStr={fmt(time)}
             durationStr={duration > 0 ? fmt(duration) : '--:--'}
-            onClose={() => setFull(false)}
+            onClose={closeFull}
             onToggle={toggle}
             onPrev={prev}
             onNext={next}

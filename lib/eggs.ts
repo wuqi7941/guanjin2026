@@ -366,15 +366,21 @@ function isoDay(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+/* 老访客迁移：本地已有到访次数但没有 FIRST_KEY，按次数倒推一个粗略的首次时间。
+   上限压到 120 天：老代码 visits 存到 400 就封顶，倒推一年会立刻误判「一年」彩蛋；
+   超过 30 次的老访客已经无法精确回溯，统一给一个保守的 120 天前。 */
+function backfillFirstSeen(visits: number): number {
+  if (!visits) return Date.now()
+  return Date.now() - Math.min(visits, 120) * 86400000
+}
+
 /* 记录今天来过，返回连续到访天数（只保留最近 30 天） */
 export function recordVisitDay(): number {
   try {
     const today = isoDay()
     if (!localStorage.getItem(FIRST_KEY)) {
-      /* 老访客：本地已有到访次数但没有 FIRST_KEY，按次数倒推一个粗略的首次时间 */
       const visits = parseInt(localStorage.getItem(VISITS_KEY) || '0', 10) || 0
-      const back = visits > 0 ? Date.now() - Math.min(visits, 400) * 86400000 : Date.now()
-      localStorage.setItem(FIRST_KEY, String(back))
+      localStorage.setItem(FIRST_KEY, String(backfillFirstSeen(visits)))
     }
     const raw = localStorage.getItem(DAYS_KEY)
     const days: string[] = raw ? JSON.parse(raw) : []
@@ -411,12 +417,13 @@ export function daysSinceFirstVisit(): number {
   }
 }
 
-/* 通用计数器：到 n 就点亮一枚暗语 */
+/* 通用计数器：递增并返回当前次数。
+   「到 n 点亮暗语」的阈值判断留给调用方（各处 n 不同），这里只管计数。 */
 export function bumpCounter(key: string, n: number): number {
+  void n
   try {
     const cur = (parseInt(localStorage.getItem('embers_c_' + key) || '0', 10) || 0) + 1
     localStorage.setItem('embers_c_' + key, String(cur))
-    void n
     return cur
   } catch {
     return 0

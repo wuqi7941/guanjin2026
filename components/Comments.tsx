@@ -53,6 +53,8 @@ export function Comments({ slug }: { slug: string }) {
   const hostRef = useRef<HTMLDivElement>(null)
 
   const [mode, setMode] = useState<'giscus' | 'local'>('giscus')
+  /* 偏好读取完成前不挂 giscus：偏好是「匿名」的用户，首屏不该先白加载一次 giscus 再卸载 */
+  const [prefReady, setPrefReady] = useState(false)
   const [gsFailed, setGsFailed] = useState(false)
   const [gsNotice, setGsNotice] = useState(false)
   const [gsLoading, setGsLoading] = useState(true)
@@ -79,10 +81,13 @@ export function Comments({ slug }: { slug: string }) {
     } catch {
       /* ignore */
     }
+    setPrefReady(true)
   }, [])
 
   const switchMode = (m: 'giscus' | 'local') => {
     setMode(m)
+    /* 用户手动切回 GitHub 讨论：清掉失败标记，给它一次重新加载的机会 */
+    if (m === 'giscus') setGsFailed(false)
     try {
       localStorage.setItem('embers_cmt_mode', m)
     } catch {
@@ -90,9 +95,9 @@ export function Comments({ slug }: { slug: string }) {
     }
   }
 
-  /* Giscus：动态加载，12s 超时退回本地 */
+  /* Giscus：动态加载，20s 超时退回本地（自动回退不持久化偏好，见下方 gsFailed effect） */
   useEffect(() => {
-    if (mode !== 'giscus' || gsFailed) return
+    if (mode !== 'giscus' || gsFailed || !prefReady) return
     const host = hostRef.current
     if (!host) return
     let cancelled = false
@@ -113,7 +118,9 @@ export function Comments({ slug }: { slug: string }) {
     s.setAttribute('data-reactions-enabled', '1')
     s.setAttribute('data-emit-metadata', '0')
     s.setAttribute('data-input-position', 'bottom')
-    s.setAttribute('data-theme', themeRef.current === 'light' ? 'light' : 'dark')
+    /* 主题默认取 light：站点 defaultTheme 就是 light，undefined（首帧）时按 dark 建页
+       会让浅色用户长期看到深色评论区 */
+    s.setAttribute('data-theme', themeRef.current === 'dark' ? 'dark' : 'light')
     s.setAttribute('data-lang', 'zh-CN')
     s.crossOrigin = 'anonymous'
     s.async = true
@@ -127,40 +134,66 @@ export function Comments({ slug }: { slug: string }) {
       if (!cancelled && !host.querySelector('iframe')) setGsFailed(true)
     }, 20000)
 
+    /* iframe 起来后补发一次主题：建页那一刻 resolvedTheme 可能还没解析（undefined→light），
+       暗色用户在这里补齐，不用等下一次切换主题 */
+    let themeTimer: ReturnType<typeof setTimeout> | undefined
     const loaded = () => {
-      if (!cancelled) setGsLoading(false)
+      if (cancelled) return
+      setGsLoading(false)
+      themeTimer = setTimeout(() => {
+        host
+          .querySelector('iframe')
+          ?.contentWindow?.postMessage(
+            { giscus: { setConfig: { theme: themeRef.current === 'dark' ? 'dark' : 'light' } } },
+            'https://giscus.app',
+          )
+      }, 1200)
     }
     s.addEventListener('load', loaded)
 
     return () => {
       cancelled = true
       window.clearTimeout(timer)
+      if (themeTimer) clearTimeout(themeTimer)
     }
-  }, [mode, slug, gsFailed])
+  }, [mode, slug, gsFailed, prefReady])
 
   /* 主题切换：postMessage 更新 giscus iframe 主题，避免整块重建（reload 闪烁） */
   useEffect(() => {
     const iframe = hostRef.current?.querySelector('iframe')
+    /* undefined（首帧未解析）按 light 发——与建页时的默认一致，别让一个中间态发 dark */
     iframe?.contentWindow?.postMessage(
-      { giscus: { setConfig: { theme: resolvedTheme === 'light' ? 'light' : 'dark' } } },
+      { giscus: { setConfig: { theme: resolvedTheme === 'dark' ? 'dark' : 'light' } } },
       'https://giscus.app'
     )
   }, [resolvedTheme, mode])
 
-  /* Giscus 失败 → 自动切本地 */
+  /* Giscus 失败 → 自动切本地。
+     自动回退只改内存态：一次网络抖动不该永久偷走 GitHub 讨论（偏好只在用户手点 tab 时持久化）。 */
   useEffect(() => {
     if (gsFailed) {
       setGsNotice(true)
-      switchMode('local')
+      setMode('local')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gsFailed])
 
   /* 本地评论读写 */
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KEY)
-      setItems(raw ? (JSON.parse(raw) as CommentItem[]) : [])
+      const parsed: unknown = raw ? JSON.parse(raw) : null
+      /* localStorage 是外部输入：形状不对（旧版格式/手改）时别让 .map/.r 崩掉评论区 */
+      const ok =
+        Array.isArray(parsed) &&
+        parsed.every(
+          (c) =>
+            !!c &&
+            typeof c === 'object' &&
+            typeof (c as CommentItem).t === 'string' &&
+            typeof (c as CommentItem).d === 'number' &&
+            Array.isArray((c as CommentItem).r),
+        )
+      setItems(ok ? (parsed as CommentItem[]) : [])
     } catch {
       setItems([])
     }
@@ -175,13 +208,26 @@ export function Comments({ slug }: { slug: string }) {
     }
   }
 
+  /* 提交反馈的定时器：卸载时清掉（350ms 内切走页面时，闭包里的 items 是旧的） */
+  const publishTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(publishTimer.current), [])
+
   const publish = () => {
     const t = text.trim()
     if (!t || sending) return
     setSending(true)
     /* 模拟极短提交反馈，保持表单手感 */
-    window.setTimeout(() => {
-      persist([{ n: name.trim() || '匿名', t, d: Date.now(), r: [] }, ...items])
+    publishTimer.current = setTimeout(() => {
+      /* 函数式更新：350ms 窗口里发生的删除/回复不会被这份旧快照覆盖 */
+      setItems((prev) => {
+        const next = [{ n: name.trim() || '匿名', t, d: Date.now(), r: [] }, ...prev]
+        try {
+          localStorage.setItem(KEY, JSON.stringify(next))
+        } catch {
+          /* ignore */
+        }
+        return next
+      })
       setText('')
       setSending(false)
       setSent(true)

@@ -51,6 +51,9 @@ function playNote(freq?: number) {
       [4.2, 0.14],
       [5.4, 0.07],
     ]
+    /* osc.stop 后浏览器会回收 osc/gain，但 master 不 disconnect 就永远挂在
+       destination 上——滑过 24 键 = 24 个 master 堆积。最后一个泛音结束时拆链。 */
+    let alive = partials.length
     for (const [ratio, amp] of partials) {
       const osc = audioCtx.createOscillator()
       osc.type = ratio === 1 ? 'triangle' : 'sine'
@@ -59,6 +62,10 @@ function playNote(freq?: number) {
       g.gain.value = amp
       osc.connect(g)
       g.connect(master)
+      osc.onended = () => {
+        alive -= 1
+        if (alive <= 0) master.disconnect()
+      }
       osc.start(t)
       osc.stop(t + 2.1)
     }
@@ -134,6 +141,8 @@ export function PianoKeyboard({ variant = 'hero' }: PianoKeyboardProps) {
   const rectRef = useRef<DOMRect | null>(null)
   const boxRef = useRef<HTMLDivElement>(null)
   const melodyRef = useRef<number[]>([])
+  /* 彩蛋点亮动画的定时器：卸载时清理，避免 setState on unmounted */
+  const melodyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const { whites, blacks, viewBox } = useMemo(() => buildKeys(variant), [variant])
   const vb = useMemo(() => viewBox.split(' ').map(Number), [viewBox])
@@ -191,7 +200,8 @@ export function PianoKeyboard({ variant = 'hero' }: PianoKeyboardProps) {
             melodyRef.current = []
             collectEgg('melody')
             setMelodyLit(true)
-            window.setTimeout(() => setMelodyLit(false), 2600)
+            if (melodyTimer.current) clearTimeout(melodyTimer.current)
+            melodyTimer.current = setTimeout(() => setMelodyLit(false), 2600)
             window.dispatchEvent(new CustomEvent('embers-burst', { detail: 14 }))
           }
         }
@@ -251,6 +261,14 @@ export function PianoKeyboard({ variant = 'hero' }: PianoKeyboardProps) {
       window.removeEventListener('pointercancel', onWinUp)
     }
   }, [hitKey, onUp])
+
+  /* 彩蛋定时器：卸载时清掉，防止 setState on unmounted */
+  useEffect(
+    () => () => {
+      if (melodyTimer.current) clearTimeout(melodyTimer.current)
+    },
+    [],
+  )
 
   return (
     <div className={`relative w-full${melodyLit ? ' piano-lit' : ''}`} style={{ aspectRatio: full ? '420 / 300' : '440 / 500' }}>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { m } from 'framer-motion'
 import { Play, Pause, SkipForward, AlignLeft } from 'lucide-react'
 import { collectEgg } from '@/lib/eggs'
@@ -28,7 +28,12 @@ const TAP_WINDOW = 900
 export function MpBar({ track, cover, playing, pct, onOpen, onToggle, onNext, onFull }: MpBarProps) {
   const taps = useRef(0)
   const resetTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  /* 换歌时重置封面加载失败标记：新歌的封面可能是好的 */
+  const [coverFailed, setCoverFailed] = useState(false)
 
+  useEffect(() => {
+    setCoverFailed(false)
+  }, [cover])
   useEffect(() => () => clearTimeout(resetTimer.current), [])
 
   const onTapCover = () => {
@@ -64,9 +69,10 @@ export function MpBar({ track, cover, playing, pct, onOpen, onToggle, onNext, on
         title={track ? track.t : '播放器封面'}
         onClick={onTapCover}
       >
-        {cover ? (
+        {/* 封面可能 404/防盗链：失败时回退占位，别一直挂破图 */}
+        {cover && !coverFailed ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={cover} alt="" />
+          <img src={cover} alt="" onError={() => setCoverFailed(true)} />
         ) : (
           <span className="mp-bar-cover-ph" />
         )}

@@ -100,6 +100,10 @@ export function usePlayerStore() {
   const srcTierRef = useRef(0)
   /* 恢复上次进度时暂存的时间点：等真正开播、metadata 到了再 seek */
   const restoreTimeRef = useRef(0)
+  /* 换源时把当前播放位置带过去：切源不该让歌从头再来 */
+  const carriedTimeRef = useRef(0)
+  /* 上一源的时长：换源后若新时长和它几乎一致，说明这就是完整长度（不是试听），别再降档 */
+  const lastDurRef = useRef(0)
   /* 暗语「挑不出来」：连续切歌计数 */
   const nextBurstRef = useRef({ t: 0, n: 0 })
 
@@ -150,6 +154,9 @@ export function usePlayerStore() {
               fetch(u)
                 .then((r) => r.text())
                 .then((txt) => {
+                  /* 内层也要校验：上一首的歌词比它的音频先回来时，
+                     不加这条就把 A 歌词糊到 B 歌头上 */
+                  if (idxRef.current !== i) return
                   lrcCacheRef.current[u] = txt
                   applyLrc(txt)
                 })
@@ -173,14 +180,25 @@ export function usePlayerStore() {
   const play = useCallback(
     (i: number, seekTo = 0) => {
       if (i < 0 || i >= PLAYLIST.length) i = 0
+      const a0 = audioRef.current
+      /* 同一首重复点：在播就不动，暂停中就恢复——别重载直链把进度抖掉 */
+      if (idxRef.current === i && a0?.src) {
+        if (a0.paused) playSafe(a0)
+        return
+      }
       idxRef.current = i
       setIdx(i)
       setErr('')
       triesRef.current = 0
       srcTierRef.current = 0
+      lastDurRef.current = 0
+      carriedTimeRef.current = 0
       const a = audioRef.current
       if (!a) return
       const track = PLAYLIST[i]
+      /* 清掉上一首残留的进度/时长，别让新歌头两秒显示旧的百分比 */
+      setTime(0)
+      setDuration(0)
       /* 起点先记下：URL 到手、metadata 到了再 seek 才生效 */
       restoreTimeRef.current = seekTo
       setBuffering(true)
@@ -394,6 +412,8 @@ export function usePlayerStore() {
     const s = idxRef.current >= 0 ? PLAYLIST[idxRef.current] : null
     if (!a || !s || triesRef.current >= 2) return false
     triesRef.current += 1
+    /* 已播过的位置带去新源：换源不该让歌从头再来 */
+    if (a.currentTime > 1) carriedTimeRef.current = a.currentTime
     if (srcTierRef.current === 0) {
       srcTierRef.current = 1
       a.src = TRACK_URL(s.id)
@@ -437,22 +457,29 @@ export function usePlayerStore() {
     },
     onAudioLoadedMetadata: (e: React.SyntheticEvent<HTMLAudioElement>) => {
       const a = e.currentTarget
-      /* 恢复的进度 / 指定的起点：metadata 到位后才 seek 得动。
-         末尾留 5 秒余量——上次听到 98% 时直接 seek 到末尾会立刻 ended，用户一恢复就被跳到下一首。 */
-      if (restoreTimeRef.current > 0) {
-        const t = restoreTimeRef.current
+      /* 起点恢复，优先级：换源携带的进度 > 用户上次听到的地方。
+         末尾留 5 秒余量——seek 到末尾会立刻 ended，用户一恢复就被跳到下一首。 */
+      const want = carriedTimeRef.current || restoreTimeRef.current
+      if (want > 0) {
+        carriedTimeRef.current = 0
         restoreTimeRef.current = 0
         const dur = isFinite(a.duration) && a.duration > 0 ? a.duration : 0
-        const safe = dur > 10 ? Math.min(t, dur - 5) : t
+        const safe = dur > 10 ? Math.min(want, dur - 5) : want
         try {
           a.currentTime = safe
         } catch {
           /* ignore */
         }
       }
-      /* 时长过短（<65s，疑似试听）→ 降档换源拿完整版 */
-      if (isFinite(a.duration) && a.duration > 0 && a.duration < 65) {
-        swapSource()
+      /* 时长过短（<65s，疑似试听）→ 降档换源拿完整版。
+         但若换源后的时长和上一源几乎一致，说明这就是完整长度（真短歌），别再来回换。 */
+      const dur = isFinite(a.duration) ? a.duration : 0
+      if (dur > 0 && dur < 65) {
+        const same = lastDurRef.current > 0 && Math.abs(dur - lastDurRef.current) < 1.5
+        lastDurRef.current = dur
+        if (!same) swapSource()
+      } else {
+        lastDurRef.current = 0
       }
     },
     onAudioEnded: (e: React.SyntheticEvent<HTMLAudioElement>) => {
@@ -482,6 +509,7 @@ export function usePlayerStore() {
       if (!swapSource()) {
         setErr('网络源暂不可用')
         setPlaying(false)
+        setBuffering(false)
       }
     },
   }

@@ -98,7 +98,8 @@ export function Hero() {
               <m.span
                 className={'seal ' + (sealLit ? 'is-lit' : '')}
                 role="button"
-                tabIndex={-1}
+                /* 键盘也能盖印：按住 Enter/空格 1.2 秒等效长按（指针的 onPointerDown 同样逻辑） */
+                tabIndex={0}
                 aria-label="余印，长按试试"
                 initial={{ opacity: 0, y: -16, scale: 1.14 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -108,6 +109,15 @@ export function Hero() {
                 onPointerLeave={onSealUp}
                 onPointerCancel={onSealUp}
                 onContextMenu={(e) => e.preventDefault()}
+                onKeyDown={(e) => {
+                  if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) {
+                    e.preventDefault()
+                    onSealDown()
+                  }
+                }}
+                onKeyUp={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') onSealUp()
+                }}
               >
                 余
               </m.span>

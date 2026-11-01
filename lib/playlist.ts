@@ -123,7 +123,9 @@ export function gdTrackUrl(id: number): Promise<string> {
     const cleanup = () => {
       window.clearTimeout(timer)
       script.remove()
-      delete win[cb]
+      /* 置成空函数而不是 delete：迟到的请求若真返回了，
+         调到的是无害的 no-op，而不是把已完成的 promise 再 resolve 一次 */
+      win[cb] = () => {}
     }
     const fail = (msg: string) => {
       if (done) return

@@ -146,8 +146,9 @@ export function AuroraBackground() {
       })
 
       /* 近层火星 */
-      embers.forEach((p, i) => {
-        if (i % 2 !== 0) return
+      embers.forEach((p) => {
+        /* 曾经写 if (i % 2 !== 0) return——forEach 每帧都跑、i 固定，
+           奇数索引的火星被永久跳过：不动、不画、白占内存，密度计算也失效 */
         p.phase += 0.0028
         p.x += p.vx
         p.y += p.vy
@@ -176,13 +177,26 @@ export function AuroraBackground() {
     resize()
     animationId = requestAnimationFrame(animate)
 
-    window.addEventListener('resize', resize)
+    /* resize 防抖 + 尺寸真变了才重掷粒子：
+       移动端地址栏伸缩每帧都触发 resize，原实现直接 init() 会连环重建 canvas 缓冲、粒子瞬移 */
+    let resizeRaf = 0
+    const onResize = () => {
+      if (resizeRaf) cancelAnimationFrame(resizeRaf)
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = 0
+        if (window.innerWidth === width && window.innerHeight === height) return
+        resize()
+      })
+    }
+
+    window.addEventListener('resize', onResize)
     document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
       running = false
       cancelAnimationFrame(animationId)
-      window.removeEventListener('resize', resize)
+      if (resizeRaf) cancelAnimationFrame(resizeRaf)
+      window.removeEventListener('resize', onResize)
       document.removeEventListener('visibilitychange', onVisibility)
       spriteCache.clear()
     }

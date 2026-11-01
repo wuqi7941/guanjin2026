@@ -112,6 +112,8 @@ export function Typewriter({
       if (document.querySelector('.mp-panel')) return
       /* g 前缀跳转折叠中：这一下不是给打字机的 */
       if ((window as unknown as Record<string, unknown>).__embersQuick) return
+      /* '/' 是搜索弹窗的快捷键，别在这里截胡 */
+      if (e.key === '/') return
       if (e.key.length === 1 && e.key !== ' ' && !e.repeat) {
         e.preventDefault()
         activate(e.key)

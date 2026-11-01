@@ -17,8 +17,14 @@ import { ScrollProgress } from '@/components/ScrollProgress'
 import { QuickNav } from '@/components/QuickNav'
 
 /* 构建期读一次字体样式（33 条 @font-face，约 11.7KB），内联进 <head>。
-   静态导出下这是安全的：文件在 public/，构建时必然存在。 */
-const FONT_CSS = fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', 'fonts.css'), 'utf8')
+   静态导出下这是安全的：文件在 public/，构建时必然存在。
+   读不到就给空串兜底——字体样式缺失只是退化成系统字体，不该炸掉整个构建。 */
+let FONT_CSS = ''
+try {
+  FONT_CSS = fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', 'fonts.css'), 'utf8')
+} catch {
+  FONT_CSS = ''
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),

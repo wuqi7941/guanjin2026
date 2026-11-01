@@ -60,8 +60,15 @@ function LeafSVG({ color }: { color: string }) {
 export function EasterEggs() {
   const [leaves, setLeaves] = useState<Leaf[]>([])
 
+  /* 叶子总量上限：连续 burst（48+26+18…）会一直累加 DOM；页面隐藏时 framer 动画暂停、
+     onAnimationComplete 不触发，旧叶子永远不掉光。超限就从最老的开始挤掉。 */
+  const MAX_LEAVES = 60
+
   const burst = useCallback((count: number) => {
-    setLeaves((prev) => [...prev, ...makeLeaves(count)])
+    setLeaves((prev) => {
+      const next = [...prev, ...makeLeaves(count)]
+      return next.length > MAX_LEAVES ? next.slice(next.length - MAX_LEAVES) : next
+    })
   }, [])
 
   useEffect(() => {

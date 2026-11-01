@@ -168,6 +168,8 @@ export function PostContent({ post, prev, next, num }: PostContentProps) {
       const ae = document.activeElement
       if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || (ae as HTMLElement).isContentEditable)) return
       if (document.querySelector('.mp-panel')) return
+      /* 搜索弹窗 / 沉浸歌词开着时别翻页：左右键是列表导航和音量 */
+      if (document.querySelector('.search-overlay, .mp-full')) return
       const target = e.key === 'ArrowLeft' ? prev : next
       if (!target) return
       e.preventDefault()

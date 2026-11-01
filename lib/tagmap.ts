@@ -37,7 +37,8 @@ export function getTagMap(): TagMapData {
     for (const t of tags) counts.set(t, (counts.get(t) ?? 0) + 1)
     for (let i = 0; i < tags.length; i++) {
       for (let j = i + 1; j < tags.length; j++) {
-        const key = [tags[i], tags[j]].sort().join('|')
+        /* 用 \u0000 分隔而不是 '|'：标签名里出现 | 时 split 还原会串味 */
+        const key = [tags[i], tags[j]].sort().join('\u0000')
         pairs.set(key, (pairs.get(key) ?? 0) + 1)
       }
     }
@@ -60,7 +61,7 @@ export function getTagMap(): TagMapData {
   const known = new Set(nodes.map((n) => n.name))
   const edges: TagEdge[] = []
   pairs.forEach((w, key) => {
-    const [a, b] = key.split('|')
+    const [a, b] = key.split('\u0000')
     if (w < 2 || !known.has(a) || !known.has(b)) return
     edges.push({ a, b, w })
   })

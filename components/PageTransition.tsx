@@ -35,14 +35,15 @@ export function PageTransition() {
      tone='paper' 时用纸页翻过去的样式（上一篇/下一篇），否则是墨染。 */
   const beginWipe = useCallback(
     (href: string, tone: 'ink' | 'paper' = 'ink') => {
-      if (leavingRef.current) return
-      leavingRef.current = true
-      setTone(tone)
-      /* 减少动态效果：不写 WIPE_KEY，否则新页读到 'in' 还是要播一段揭开 */
+      /* 减少动态效果：不写 WIPE_KEY，也不设 leavingRef——
+         没有墨层要保护，锁了会让后续所有导航永远进不来（reduce 下无 3s 兜底路径解除它） */
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         router.push(href)
         return
       }
+      if (leavingRef.current) return
+      leavingRef.current = true
+      setTone(tone)
       try {
         sessionStorage.setItem(WIPE_KEY, 'in')
       } catch {

@@ -3,6 +3,7 @@ import { m } from 'framer-motion'
 import { X, Music2, ListMusic, Maximize2 } from 'lucide-react'
 import { Track } from '@/lib/playlist'
 import { EASE_QUIET } from '@/lib/motion'
+import { lockScroll } from '@/lib/scrollLock'
 import { MpCover } from './MpCover'
 import { MpLyrics, type LrcLine } from './MpLyrics'
 import { MpPlaylist } from './MpPlaylist'
@@ -47,6 +48,13 @@ export function MpPanel({
   onClose, onTab, onPlay, onSeekTo, onToggleShuffle, onPrev, onToggle, onNext, onVol, onFull,
 }: MpPanelProps) {
   const closeRef = useRef<HTMLButtonElement>(null)
+
+  /* 手机端面板是全屏的，锁住背后滚动；桌面端是浮窗，页面照常可滚 */
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!window.matchMedia('(max-width: 639px)').matches) return
+    return lockScroll()
+  }, [])
 
   /* dialog 语义补全：打开时焦点进面板（交给关闭钮），关闭时还原到触发元素 */
   useEffect(() => {

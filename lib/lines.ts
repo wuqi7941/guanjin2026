@@ -11,7 +11,9 @@ export interface DailyLine {
   date: string
 }
 
-const SENTENCE_END = /(?<=[。！？])/
+/* 句子切分不用 lookbehind（(?<=…)）：Safari < 16.4 会在正则解析期直接抛
+   SyntaxError，整包崩掉。改成 match 逐句摘取，行为等价。 */
+const SENTENCE_RE = /[^。！？]*[。！？]/g
 
 /* 挑句子的偏好：带「我 / 他们 / 没有 / 如果」的更像在说话；
    长度 18–40 字最好念；太短没味道，太长像段落。 */
@@ -35,8 +37,10 @@ export function getDailyLines(): DailyLine[] {
 
   for (const doc of getSearchDocs()) {
     const candidates: string[] = []
-    for (const para of doc.body.split('\n')) {
-      for (const raw of para.split(SENTENCE_END)) {
+    /* body 可能是 undefined（getSearchDocs 对空文返回空串，但防御起见 ?? ''）——
+       这里一旦 undefined，/daily-lines.json 整个路由 500，首页每日一句整块消失 */
+    for (const para of (doc.body ?? '').split('\n')) {
+      for (const raw of para.match(SENTENCE_RE) ?? []) {
         /* 去掉列表序号（"6. " / "1、"）与行首标记，避免抽到清单项 */
         const s = raw.replace(/^\s*\d+\s*[.、)）]\s*/, '').trim()
         if (s.length < 14 || s.length > 46) continue
