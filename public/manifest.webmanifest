@@ -1,7 +1,9 @@
 {
+  "id": "/",
+  "scope": "/",
   "name": "余烬 EMBERS — 观烬的个人博客",
   "short_name": "余烬",
-  "description": "观烬的个人博客——技术、设计与思考的碎片记录。",
+  "description": "一个十六岁少年的数字花园。二百多篇随笔、短篇和一部长篇，都写在一张会泛黄的纸上。",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F2ECE1",

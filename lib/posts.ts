@@ -16,6 +16,23 @@ function withWordCount(list: Post[]): Post[] {
 
 const posts: Post[] = withWordCount(postsData as Post[])
 
+/* 构建期体检（只告警不拦构建）：
+   title 与 slug 相同意味着生成脚本漏取了标题，列表 / 搜索 / RSS / JSON-LD
+   会直接把文件名当标题展示。已知 piano-01/02/03/05 四篇如此。
+   用一个模块级标志只打一次——构建会并行加载本模块多次，否则同一句话刷好几遍。 */
+let titleWarned = false
+if (process.env.NODE_ENV === 'production' && !titleWarned) {
+  titleWarned = true
+  const suspicious = posts.filter((p) => p.title === p.slug)
+  if (suspicious.length) {
+    console.warn(
+      `[posts] ${suspicious.length} 篇标题与 slug 相同（疑似漏取标题）：${suspicious
+        .map((p) => p.slug)
+        .join('、')}`,
+    )
+  }
+}
+
 /* 排序规则：小说《攒一架琴》固定第一；「得意」只置顶一篇（最新那篇），
    其余得意回到时间序列——全置顶会让 7 月的文章压在 10 月前面，日期跳来跳去。
    次级键用 slug：同日多篇（数据里一天最多 6 篇）时顺序才确定，prev/next 不抖。 */
@@ -127,9 +144,10 @@ function plainText(md: string): string {
     .trim()
 }
 
-/* 正文截断：绝大多数文章 < 2000 字，长文（小说）截前 4000 字，
-   索引体积控制在 200KB 上下，只在打开搜索时下载 */
-const BODY_LIMIT = 4000
+/* 正文截断：搜索只需要"命中片段"，全文可以点进去看。
+   原先取 4000 字——212 篇里绝大多数不到 4000，等于全文入库，
+   索引实测 359KB（承诺 200KB）。收到 1500 字后约 150KB，移动端首开快一半。 */
+const BODY_LIMIT = 1500
 
 export function getSearchDocs(): SearchDoc[] {
   return sortPosts(posts).map((p) => ({

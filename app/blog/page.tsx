@@ -9,6 +9,7 @@ import { getAllPosts, getTagCounts, getArchiveStats, toCard } from '@/lib/posts'
 export const metadata = {
   title: '文章 — 余烬 EMBERS',
   description: '浏览观烬的全部文章：技术、日记、随笔、小说、诗，还有深夜的思绪。',
+  alternates: { canonical: '/blog/' },
 }
 
 export default function BlogPage() {

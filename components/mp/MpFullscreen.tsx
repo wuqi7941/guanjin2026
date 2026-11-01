@@ -5,6 +5,7 @@ import { m } from 'framer-motion'
 import { X, Play, Pause, SkipBack, SkipForward } from 'lucide-react'
 import type { Track } from '@/lib/playlist'
 import type { LrcLine } from './MpLyrics'
+import { lockScroll } from '@/lib/scrollLock'
 
 interface MpFullscreenProps {
   track: Track | null
@@ -51,11 +52,10 @@ export function MpFullscreen({
       if (e.key === 'Escape') onClose()
     }
     document.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const unlock = lockScroll()
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prev
+      unlock()
     }
   }, [onClose])
 

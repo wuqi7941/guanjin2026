@@ -8,6 +8,7 @@ import { AnimatePresence, m, useReducedMotion } from 'framer-motion'
 import { Expand, X } from 'lucide-react'
 import { PianoKeyboard } from './PianoKeyboard'
 import { useInView } from '@/hooks/useInView'
+import { lockScroll } from '@/lib/scrollLock'
 
 
 const MODES = ['photo', 'piano'] as const
@@ -45,15 +46,14 @@ export function HeroArt() {
   useEffect(() => {
     if (!fullOpen) return
     const opener = document.activeElement as HTMLElement | null
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const unlock = lockScroll()
     const t = window.setTimeout(() => closeRef.current?.focus(), 50)
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setFullOpen(false)
     }
     document.addEventListener('keydown', onKey)
     return () => {
-      document.body.style.overflow = prev
+      unlock()
       window.clearTimeout(t)
       document.removeEventListener('keydown', onKey)
       opener?.focus?.()

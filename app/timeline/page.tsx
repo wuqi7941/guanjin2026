@@ -7,6 +7,7 @@ import { getAllPosts, toCard } from '@/lib/posts'
 export const metadata = {
   title: '火的年轮 — 余烬 EMBERS',
   description: '按月份排开的一年：哪个月写得密，哪个月几乎熄了。',
+  alternates: { canonical: '/timeline/' },
 }
 
 /* 火的年轮：把 211 篇按月份排开，柱子的长短就是那个月写了多少。

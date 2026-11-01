@@ -4422,13 +4422,15 @@ li:focus-within > .egg-hint {
   content: '';
   position: absolute;
   left: 50%;
-  bottom: -22%;
+  /* 光心必须留在可见区内：曾经写成 bottom:-22%，最亮的那一圈被 overflow-hidden
+     裁到了屏幕外，用户看到的只是渐变的上半截，还带一条硬切线 */
+  bottom: 0;
   z-index: -1;
   width: min(130vw, 1500px);
-  height: 62vh;
+  height: 55vh;
   pointer-events: none;
   background: radial-gradient(
-    50% 62% at 50% 100%,
+    52% 66% at 50% 104%,
     color-mix(in srgb, var(--accent) 12%, transparent) 0%,
     color-mix(in srgb, var(--accent) 5%, transparent) 38%,
     transparent 72%
@@ -4466,5 +4468,14 @@ li:focus-within > .egg-hint {
   }
   .light .hero-poster::after {
     opacity: 0.2;
+  }
+}
+
+/* 手机上 GPU 吃不住 1500px 宽 + blur(48px) 的图层：收窄、减模糊，
+   26s 的呼吸节奏保留——亮度基本不变，像素成本降一大截 */
+@media (max-width: 639px) {
+  .hero-poster::after {
+    height: 45vh;
+    filter: blur(28px);
   }
 }

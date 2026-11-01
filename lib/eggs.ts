@@ -304,7 +304,14 @@ const SESSION_KEY = 'embers_visit_counted'
 export function getCollectedEggs(): EggKey[] {
   try {
     const raw = localStorage.getItem(EGGS_KEY)
-    return raw ? (JSON.parse(raw) as EggKey[]) : []
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    /* localStorage 是外部输入：被写坏、或被旧版本写成别的形状时，
+       直接 as EggKey[] 强转会让上层 .includes / .length 崩掉（页脚收集册整体消失）。
+       用 EGGS 白名单筛一遍，脏值直接丢弃。 */
+    if (!Array.isArray(parsed)) return []
+    const known = new Set<string>(EGGS.map((e) => e.key))
+    return parsed.filter((k): k is EggKey => typeof k === 'string' && known.has(k))
   } catch {
     return []
   }

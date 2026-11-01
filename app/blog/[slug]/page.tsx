@@ -65,7 +65,9 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
     <main id="main-content" className="relative min-h-screen">
       <AuroraBackground />
       <Navbar />
-      {/* BlogPosting 结构化数据：搜索引擎的富摘要（作者/日期/标题）从这里来 */}
+      {/* BlogPosting 结构化数据：搜索引擎的富摘要（作者/日期/标题）从这里来。
+          必须转义 `<`：JSON.stringify 会把字符串原样吐出来，标题里出现
+          `</script>` 就会提前闭合标签——当前数据没有，但内容源一变就炸。 */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -75,11 +77,19 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
             headline: post.title,
             description: post.excerpt,
             datePublished: post.date,
+            dateModified: post.date,
+            inLanguage: 'zh-CN',
             author: { '@type': 'Person', name: SITE.author, url: `${SITE.url}/about/` },
+            /* publisher 是 Google 富结果的必需字段，缺了直接不合格 */
+            publisher: {
+              '@type': 'Organization',
+              name: '余烬 EMBERS',
+              logo: { '@type': 'ImageObject', url: `${SITE.url}/icon-512.png` },
+            },
             image: `${SITE.url}/og/${post.slug}.png`,
             mainEntityOfPage: `${SITE.url}/blog/${post.slug}/`,
             keywords: (post.tags ?? []).join(', '),
-          }),
+          }).replace(/</g, '\\u003c'),
         }}
       />
       <PostContent post={post} prev={prev} next={next} num={posts.length - index} />

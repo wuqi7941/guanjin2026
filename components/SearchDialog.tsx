@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { m, AnimatePresence } from 'framer-motion'
 import { Search, X, CornerDownLeft } from 'lucide-react'
 import { collectEgg } from '@/lib/eggs'
+import { lockScroll } from '@/lib/scrollLock'
 import { unlockCopy } from './CopyGuard'
 
 interface Doc {
@@ -258,11 +259,10 @@ export function SearchDialog() {
   /* 打开时锁滚动 + 聚焦输入框；关闭时把焦点还给触发元素 */
   useEffect(() => {
     if (!open) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const unlock = lockScroll()
     const t = window.setTimeout(() => inputRef.current?.focus(), 60)
     return () => {
-      document.body.style.overflow = prev
+      unlock()
       window.clearTimeout(t)
       openerRef.current?.focus?.()
       openerRef.current = null

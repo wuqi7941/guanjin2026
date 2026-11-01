@@ -87,6 +87,34 @@ for (const f of all) {
   if (/Photoshop|Adobe/.test(s)) problems.push(`Photoshop 元数据：${rel(f)}`)
 }
 
+/* ── 5. 依赖漏洞（提示级，不阻塞）──
+   npmmirror 不支持 audit 接口（返回 NOT_IMPLEMENTED），必须显式指定官方源，
+   否则这里永远读到空结果——那等于没有这项检查。 */
+try {
+  const { execSync } = await import('node:child_process')
+  const cmd = 'npm audit --registry=https://registry.npmjs.org --json'
+  let raw = ''
+  try {
+    raw = execSync(cmd, { encoding: 'utf8', timeout: 45000, stdio: ['ignore', 'pipe', 'ignore'] })
+  } catch (e) {
+    /* npm audit 发现漏洞时退出码是 1——那是正常结果，不是执行失败，stdout 里照样有 JSON */
+    raw = (e?.stdout ?? '').toString()
+  }
+  const meta = JSON.parse(raw)?.metadata?.vulnerabilities ?? {}
+  const c = meta.critical || 0
+  const h = meta.high || 0
+  const m = meta.moderate || 0
+  if (c || h) {
+    notes.push(
+      `依赖漏洞 ${c} critical / ${h} high / ${m} moderate —— 当前 Next 的这批全是服务端类（Image Optimizer / RSC / rewrites / Server Actions），output:export 无服务端，不可利用；真要清零需上 Next 15.5.28+`,
+    )
+  } else {
+    console.log(`✓ 依赖漏洞：${c} critical / ${h} high / ${m} moderate`)
+  }
+} catch {
+  notes.push('依赖审计未完成（网络或 registry 不支持）——请手动跑 npm run audit')
+}
+
 /* ── 汇总 ── */
 const totalSize = all.reduce((n, f) => n + fs.statSync(f).size, 0)
 console.log(`扫描 dist/：${all.length} 个文件 / ${(totalSize / 1024 / 1024).toFixed(1)} MB（图片 ${imgCount} 张）`)

@@ -6,6 +6,7 @@ import { ContactSection } from '@/components/ContactSection'
 export const metadata = {
   title: '联系 — 余烬 EMBERS',
   description: '有项目、想法，或单纯想聊聊设计与技术，随时找观烬。',
+  alternates: { canonical: '/contact/' },
 }
 
 /* 联系从首页搬出来成一页：首页不再一路滚到「保持联系」，

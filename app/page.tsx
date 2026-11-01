@@ -11,6 +11,12 @@ import Link from 'next/link'
 import { getAllPosts, getFeaturedPosts, getPostBySlug, getArchiveStats } from '@/lib/posts'
 import { getDailyLines } from '@/lib/lines'
 
+/* 首页自己的 metadata：标题与描述继承 layout，但 canonical 必须每页单独声明。
+   不能放 layout——Metadata 的 alternates 会向下继承，把所有子页的 canonical 压成首页。 */
+export const metadata = {
+  alternates: { canonical: '/' },
+}
+
 export default function Home() {
   /* 《攒一架琴》在下方 NovelBanner 已单独占一条横幅，首页目录里不再重复 */
   const featuredPosts = getFeaturedPosts().filter((post) => post.slug !== 'novel-01')

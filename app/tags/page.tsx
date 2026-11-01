@@ -11,6 +11,7 @@ export function generateMetadata() {
   return {
     title: '标签星图 — 余烬 EMBERS',
     description: `${count} 个分区在同一篇里碰到过就连一条线。悬停看关系，点一个分区看它的文章。`,
+    alternates: { canonical: '/tags/' },
   }
 }
 

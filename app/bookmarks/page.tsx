@@ -7,6 +7,7 @@ import { getAllPosts, toCard } from '@/lib/posts'
 export const metadata = {
   title: '收藏夹 — 余烬 EMBERS',
   description: '你在这台设备上收藏过的文章。存在本地，不上传。',
+  alternates: { canonical: '/bookmarks/' },
 }
 
 export default function BookmarksPage() {

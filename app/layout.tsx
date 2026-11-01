@@ -21,9 +21,10 @@ export const metadata: Metadata = {
   keywords: SITE.keywords,
   authors: [{ name: SITE.author }],
   manifest: '/manifest.webmanifest',
+  /* apple 图标由 app/apple-icon.png 的文件约定生成，不在这里再指一次
+     （原先两处都写，产出两份 3923B 的相同文件） */
   icons: {
     icon: '/icon.svg',
-    apple: '/apple-touch-icon.png',
   },
   openGraph: {
     title: SITE.name,
@@ -86,10 +87,11 @@ export default function RootLayout({
         <meta name="theme-color" content="#F2ECE1" />
         {/* RSS 订阅 */}
         <link rel="alternate" type="application/rss+xml" title="余烬 EMBERS" href="/feed.xml" />
-        {/* 音乐源域名预解析（播放器首次播放更快） */}
-        
+        {/* 音乐源预热：实际播放走 GD Studio（JSONP）→ meting → 网易 CDN，
+            真正需要握手的是前两个域名；网易 CDN（music.126.net）量大但域名多变，只做 dns 预解析 */}
+        <link rel="preconnect" href="https://music-api.gdstudio.xyz" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="//api.injahow.cn" />
-        <link rel="dns-prefetch" href="//music.163.com" />
+        <link rel="dns-prefetch" href="//m801.music.126.net" />
       </head>
       <body className={`${GeistSans.variable} ${GeistMono.variable} grain`}>
         <a href="#main-content" className="skip-link">

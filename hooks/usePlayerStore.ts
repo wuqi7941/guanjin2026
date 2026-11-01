@@ -164,6 +164,8 @@ export function usePlayerStore() {
   /* play() 被浏览器策略拒绝时给出可见提示（其余 abort 噪音忽略） */
   const playSafe = useCallback((a: HTMLAudioElement) => {
     a.play().catch((e) => {
+      /* 不管哪种失败，缓冲点都要停——否则一个转圈的小点会一直挂在那儿 */
+      setBuffering(false)
       if ((e as DOMException)?.name === 'NotAllowedError') setErr('浏览器拦截了自动播放，点一下播放键')
     })
   }, [])
@@ -435,12 +437,15 @@ export function usePlayerStore() {
     },
     onAudioLoadedMetadata: (e: React.SyntheticEvent<HTMLAudioElement>) => {
       const a = e.currentTarget
-      /* 恢复的进度 / 指定的起点：metadata 到位后才 seek 得动 */
+      /* 恢复的进度 / 指定的起点：metadata 到位后才 seek 得动。
+         末尾留 5 秒余量——上次听到 98% 时直接 seek 到末尾会立刻 ended，用户一恢复就被跳到下一首。 */
       if (restoreTimeRef.current > 0) {
         const t = restoreTimeRef.current
         restoreTimeRef.current = 0
+        const dur = isFinite(a.duration) && a.duration > 0 ? a.duration : 0
+        const safe = dur > 10 ? Math.min(t, dur - 5) : t
         try {
-          a.currentTime = t
+          a.currentTime = safe
         } catch {
           /* ignore */
         }

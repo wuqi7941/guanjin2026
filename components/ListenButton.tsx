@@ -13,6 +13,8 @@ export function ListenButton() {
   const idxRef = useRef(0)
   /* 语音回调是异步的，闭包里读 state 会拿到旧值：改用 ref 同步一份 */
   const stateRef = useRef<'idle' | 'playing' | 'paused'>('idle')
+  /* 朗读代数：每次 start / stop 加一，旧 utterance 的 onend 一看到代数变了就作废 */
+  const genRef = useRef(0)
   const setPhase = (s: 'idle' | 'playing' | 'paused') => {
     stateRef.current = s
     setState(s)
@@ -46,9 +48,12 @@ export function ListenButton() {
     u.lang = 'zh-CN'
     u.rate = 0.92
     u.pitch = 0.98
+    const gen = genRef.current
     u.onend = () => {
+      /* 两重保险：代数变了（stop / 重新开始）说明这条已作废，直接丢弃。
+         否则 cancel() 触发的 onend 会把整段从头再念一遍。 */
+      if (gen !== genRef.current) return
       idxRef.current += 1
-      /* 用 ref 判断：cancel() 触发的 onend 闭包里 state 是旧的 */
       if (stateRef.current === 'playing') speakNext()
     }
     synth.speak(u)
@@ -63,6 +68,7 @@ export function ListenButton() {
       .map((s) => s.trim())
       .filter((s) => s.length > 1)
     idxRef.current = 0
+    genRef.current += 1
     setPhase('playing')
     try {
       window.speechSynthesis.cancel()
@@ -88,12 +94,15 @@ export function ListenButton() {
   }
 
   const stop = () => {
+    genRef.current += 1
     try {
       window.speechSynthesis.cancel()
     } catch {
       /* ignore */
     }
-    setState('idle')
+    /* 必须走 setPhase：只调 setState 的话 stateRef 还停在 'playing'，
+       cancel() 触发的 onend 会继续 speakNext() —— 点"停止"反而接着念下一句 */
+    setPhase('idle')
     idxRef.current = 0
   }
 

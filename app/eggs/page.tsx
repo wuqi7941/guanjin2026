@@ -6,6 +6,9 @@ import { EggBook } from '@/components/EggBook'
 export const metadata = {
   title: '暗语全册 — 余烬 EMBERS',
   description: '全部暗语的触发方式。这一页不在导航里，只有在搜索框敲「观烬」才到得了。',
+  alternates: { canonical: '/eggs/' },
+  /* 彩蛋页：不在导航、不进 sitemap，也不要被搜索引擎收进来 */
+  robots: { index: false, follow: false },
 }
 
 export default function EggsPage() {

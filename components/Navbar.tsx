@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu, X, Search, ChevronDown } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
+import { lockScroll } from '@/lib/scrollLock'
 
 /* 「文章」下面挂四个去处：全部、年轮、星图、收藏夹。
    年轮与星图原来是文章列表标题下的小字，等于藏起来了。 */
@@ -48,8 +49,7 @@ export function Navbar() {
   /* 移动菜单：Esc 关、点外面关、开着锁背后滚动；关上把焦点还给汉堡钮 */
   useEffect(() => {
     if (!open) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const unlock = lockScroll()
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
     }
@@ -60,7 +60,7 @@ export function Navbar() {
     document.addEventListener('keydown', onKey)
     document.addEventListener('click', onClick)
     return () => {
-      document.body.style.overflow = prev
+      unlock()
       document.removeEventListener('keydown', onKey)
       document.removeEventListener('click', onClick)
       burgerRef.current?.focus()
