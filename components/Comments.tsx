@@ -19,6 +19,16 @@ interface CommentItem {
   t: string
   d: number
   r: Reply[]
+  /* 云端主评论的真实 id：删除时用它 + 本地存的 secret */
+  id?: number
+}
+
+interface CloudComment {
+  id: number
+  name: string
+  body: string
+  replyTo: number | null
+  createdAt: number
 }
 
 const AV_EMOJI = ['🦊', '🐱', '🐼', '🐸', '🐙', '🦉', '🐰', '🐻', '🐯', '🦄', '🐳', '🦋']
@@ -52,7 +62,8 @@ export function Comments({ slug }: { slug: string }) {
   const reduce = !!useReducedMotion()
   const hostRef = useRef<HTMLDivElement>(null)
 
-  const [mode, setMode] = useState<'giscus' | 'local'>('giscus')
+  /* cloud = 自建免登录评论（Cloudflare Functions + D1）；giscus = GitHub Discussions */
+  const [mode, setMode] = useState<'giscus' | 'cloud'>('giscus')
   /* 偏好读取完成前不挂 giscus：偏好是「匿名」的用户，首屏不该先白加载一次 giscus 再卸载 */
   const [prefReady, setPrefReady] = useState(false)
   const [gsFailed, setGsFailed] = useState(false)
@@ -74,17 +85,18 @@ export function Comments({ slug }: { slug: string }) {
     themeRef.current = resolvedTheme
   }, [resolvedTheme])
 
-  /* 模式偏好 */
+  /* 模式偏好：旧版本存的 'local' 就是现在的 cloud */
   useEffect(() => {
     try {
-      if (localStorage.getItem('embers_cmt_mode') === 'local') setMode('local')
+      const v = localStorage.getItem('embers_cmt_mode')
+      if (v === 'local' || v === 'cloud') setMode('cloud')
     } catch {
       /* ignore */
     }
     setPrefReady(true)
   }, [])
 
-  const switchMode = (m: 'giscus' | 'local') => {
+  const switchMode = (m: 'giscus' | 'cloud') => {
     setMode(m)
     /* 用户手动切回 GitHub 讨论：清掉失败标记，给它一次重新加载的机会 */
     if (m === 'giscus') setGsFailed(false)
@@ -120,7 +132,9 @@ export function Comments({ slug }: { slug: string }) {
     s.setAttribute('data-input-position', 'bottom')
     /* 主题默认取 light：站点 defaultTheme 就是 light，undefined（首帧）时按 dark 建页
        会让浅色用户长期看到深色评论区 */
-    s.setAttribute('data-theme', themeRef.current === 'dark' ? 'dark' : 'light')
+    /* 自定义纸墨主题：giscus 支持 data-theme 传 CSS 文件 URL，
+       iframe 里会加载它并应用变量（两套主题对应站点的明暗） */
+    s.setAttribute('data-theme', `${location.origin}/giscus-${themeRef.current === 'dark' ? 'dark' : 'light'}.css`)
     s.setAttribute('data-lang', 'zh-CN')
     s.crossOrigin = 'anonymous'
     s.async = true
@@ -144,7 +158,7 @@ export function Comments({ slug }: { slug: string }) {
         host
           .querySelector('iframe')
           ?.contentWindow?.postMessage(
-            { giscus: { setConfig: { theme: themeRef.current === 'dark' ? 'dark' : 'light' } } },
+            { giscus: { setConfig: { theme: `${location.origin}/giscus-${themeRef.current === 'dark' ? 'dark' : 'light'}.css` } } },
             'https://giscus.app',
           )
       }, 1200)
@@ -163,52 +177,82 @@ export function Comments({ slug }: { slug: string }) {
     const iframe = hostRef.current?.querySelector('iframe')
     /* undefined（首帧未解析）按 light 发——与建页时的默认一致，别让一个中间态发 dark */
     iframe?.contentWindow?.postMessage(
-      { giscus: { setConfig: { theme: resolvedTheme === 'dark' ? 'dark' : 'light' } } },
+      { giscus: { setConfig: { theme: `${location.origin}/giscus-${resolvedTheme === 'dark' ? 'dark' : 'light'}.css` } } },
       'https://giscus.app'
     )
   }, [resolvedTheme, mode])
 
-  /* Giscus 失败 → 自动切本地。
+  /* Giscus 失败 → 自动切云评论。
      自动回退只改内存态：一次网络抖动不该永久偷走 GitHub 讨论（偏好只在用户手点 tab 时持久化）。 */
   useEffect(() => {
     if (gsFailed) {
       setGsNotice(true)
-      setMode('local')
+      setMode('cloud')
     }
   }, [gsFailed])
 
-  /* 本地评论读写 */
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY)
-      const parsed: unknown = raw ? JSON.parse(raw) : null
-      /* localStorage 是外部输入：形状不对（旧版格式/手改）时别让 .map/.r 崩掉评论区 */
-      const ok =
-        Array.isArray(parsed) &&
-        parsed.every(
-          (c) =>
-            !!c &&
-            typeof c === 'object' &&
-            typeof (c as CommentItem).t === 'string' &&
-            typeof (c as CommentItem).d === 'number' &&
-            Array.isArray((c as CommentItem).r),
-        )
-      setItems(ok ? (parsed as CommentItem[]) : [])
-    } catch {
-      setItems([])
-    }
-  }, [KEY])
+  /* ============ 云评论（自建 API）============ */
 
-  const persist = (next: CommentItem[]) => {
-    setItems(next)
+  /* 自己发过的评论的删除凭据：id → secret，存本地 */
+  const SECRETS_KEY = `embers_cmt_secret_${slug}`
+  const [secrets, setSecrets] = useState<Record<string, string>>({})
+  const [cloudErr, setCloudErr] = useState('')
+  const [cloudLoading, setCloudLoading] = useState(false)
+
+  const rememberSecret = (id: number, secret: string) => {
     try {
-      localStorage.setItem(KEY, JSON.stringify(next))
+      const raw = localStorage.getItem(SECRETS_KEY)
+      const map: Record<string, string> = raw ? JSON.parse(raw) : {}
+      map[String(id)] = secret
+      localStorage.setItem(SECRETS_KEY, JSON.stringify(map))
+      setSecrets(map)
     } catch {
       /* ignore */
     }
   }
+  const ownSecret = (c: CommentItem): string | undefined =>
+    c.id && secrets[String(c.id)] ? secrets[String(c.id)] : undefined
 
-  /* 提交反馈的定时器：卸载时清掉（350ms 内切走页面时，闭包里的 items 是旧的） */
+  /* 云端扁平列表 → 树（回复归位到父评论的 r 里），新的在前 */
+  const toTree = (flat: CloudComment[]): CommentItem[] => {
+    const top: CommentItem[] = []
+    const byId = new Map<number, CommentItem>()
+    for (const f of flat) {
+      const item: CommentItem = { n: f.name, t: f.body, d: f.createdAt, r: [], id: f.id }
+      const parent = f.replyTo ? byId.get(f.replyTo) : undefined
+      if (parent) parent.r.push({ n: item.n, t: item.t, d: item.d })
+      else top.push(item)
+      byId.set(f.id, item)
+    }
+    return top.reverse()
+  }
+
+  /* 加载云评论 */
+  useEffect(() => {
+    if (mode !== 'cloud' || !prefReady) return
+    let cancelled = false
+    setCloudLoading(true)
+    setCloudErr('')
+    fetch(`/api/comments?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (cancelled) return
+        setItems(toTree((j.comments ?? []) as CloudComment[]))
+        try {
+          setSecrets(JSON.parse(localStorage.getItem(SECRETS_KEY) || '{}'))
+        } catch {
+          /* ignore */
+        }
+      })
+      .catch(() => !cancelled && setCloudErr('评论加载失败，稍后再试'))
+      .finally(() => !cancelled && setCloudLoading(false))
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, slug, prefReady])
+
+  /* 提交反馈的定时器：卸载时清掉 */
   const publishTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => () => clearTimeout(publishTimer.current), [])
 
@@ -216,23 +260,26 @@ export function Comments({ slug }: { slug: string }) {
     const t = text.trim()
     if (!t || sending) return
     setSending(true)
-    /* 模拟极短提交反馈，保持表单手感 */
-    publishTimer.current = setTimeout(() => {
-      /* 函数式更新：350ms 窗口里发生的删除/回复不会被这份旧快照覆盖 */
-      setItems((prev) => {
-        const next = [{ n: name.trim() || '匿名', t, d: Date.now(), r: [] }, ...prev]
-        try {
-          localStorage.setItem(KEY, JSON.stringify(next))
-        } catch {
-          /* ignore */
+    setCloudErr('')
+    fetch('/api/comments', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ slug, name: name.trim() || '匿名', body: t }),
+    })
+      .then(async (r) => {
+        const j = await r.json()
+        if (!r.ok) {
+          setCloudErr(j.error || '发布失败')
+          return
         }
-        return next
+        rememberSecret(j.id, j.secret)
+        setItems((prev) => [{ n: j.name, t: j.body, d: j.createdAt, r: [], id: j.id }, ...prev])
+        setText('')
+        setSent(true)
+        window.setTimeout(() => setSent(false), 1600)
       })
-      setText('')
-      setSending(false)
-      setSent(true)
-      window.setTimeout(() => setSent(false), 1600)
-    }, 350)
+      .catch(() => setCloudErr('网络不通，稍后再试'))
+      .finally(() => setSending(false))
   }
 
   const replyTo = (d: number) => {
@@ -247,17 +294,48 @@ export function Comments({ slug }: { slug: string }) {
 
   const submitReply = (d: number) => {
     const t = replyText.trim()
-    if (!t) return
-    persist(
-      items.map((c) =>
-        c.d === d ? { ...c, r: [...c.r, { n: name.trim() || '匿名', t, d: Date.now() }] } : c
-      )
-    )
-    setReplyingTo(null)
-    setReplyText('')
+    if (!t || sending) return
+    const parent = items.find((c) => c.d === d)
+    if (!parent?.id) {
+      setCloudErr('要回复的评论已不存在')
+      return
+    }
+    setSending(true)
+    setCloudErr('')
+    fetch('/api/comments', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ slug, name: name.trim() || '匿名', body: t, replyTo: parent.id }),
+    })
+      .then(async (r) => {
+        const j = await r.json()
+        if (!r.ok) {
+          setCloudErr(j.error || '回复失败')
+          return
+        }
+        rememberSecret(j.id, j.secret)
+        setItems((prev) => prev.map((c) => (c.d === d ? { ...c, r: [...c.r, { n: j.name, t: j.body, d: j.createdAt }] } : c)))
+        setReplyingTo(null)
+        setReplyText('')
+      })
+      .catch(() => setCloudErr('网络不通，稍后再试'))
+      .finally(() => setSending(false))
   }
 
-  const remove = (d: number) => persist(items.filter((c) => c.d !== d))
+  const remove = (d: number) => {
+    const target = items.find((c) => c.d === d)
+    const secret = target?.id ? secrets[String(target.id)] : undefined
+    if (!target?.id || !secret) {
+      setCloudErr('删除失败')
+      return
+    }
+    fetch(`/api/comments?id=${target.id}&secret=${encodeURIComponent(secret)}`, { method: 'DELETE' })
+      .then((r) => {
+        if (!r.ok) setCloudErr('删除失败')
+        else setItems((prev) => prev.filter((c) => c.d !== d))
+      })
+      .catch(() => setCloudErr('网络不通，稍后再试'))
+  }
 
   const anim = reduce
     ? undefined
@@ -286,7 +364,7 @@ export function Comments({ slug }: { slug: string }) {
         onKeyDown={(e) => {
           if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
           e.preventDefault()
-          const next = mode === 'giscus' ? 'local' : 'giscus'
+          const next = mode === 'giscus' ? 'cloud' : 'giscus'
           switchMode(next)
           requestAnimationFrame(() => document.getElementById(`cmt-tab-${next}`)?.focus())
         }}
@@ -312,13 +390,13 @@ export function Comments({ slug }: { slug: string }) {
         <button
           role="tab"
           id="cmt-tab-local"
-          aria-selected={mode === 'local'}
+          aria-selected={mode === 'cloud'}
           aria-controls="cmt-panel"
-          tabIndex={mode === 'local' ? 0 : -1}
+          tabIndex={mode === 'cloud' ? 0 : -1}
           type="button"
-          onClick={() => switchMode('local')}
+          onClick={() => switchMode('cloud')}
           className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-mono tracking-[0.08em] transition-colors duration-200 ${
-            mode === 'local'
+            mode === 'cloud'
               ? 'bg-[var(--accent)] text-white'
               : 'text-[var(--ink-subtle)] hover:text-[var(--ink)]'
           }`}
@@ -328,7 +406,7 @@ export function Comments({ slug }: { slug: string }) {
         </button>
       </div>
 
-      {gsNotice && mode === 'local' && (
+      {gsNotice && mode === 'cloud' && (
         <p className="mt-4 text-xs text-[var(--ink-subtle)]" role="status">
           GitHub 讨论暂时不可用，已切换到匿名留言。
         </p>
@@ -344,8 +422,18 @@ export function Comments({ slug }: { slug: string }) {
             />
           )
         ) : (
-          <m.div {...anim} key="local">
-            <div className="rounded-2xl card-static p-5 sm:p-6">
+          <m.div {...anim} key="cloud">
+          {cloudLoading && (
+            <p className="mb-4 text-xs font-mono text-[var(--ink-tertiary)]" role="status">
+              正在搬火堆…
+            </p>
+          )}
+          {cloudErr && (
+            <p className="mb-4 text-xs text-[var(--accent)]" role="alert">
+              {cloudErr}
+            </p>
+          )}
+          <div className="rounded-2xl card-static p-5 sm:p-6">
               <form
                 onSubmit={(e) => {
                   e.preventDefault()
@@ -450,7 +538,8 @@ export function Comments({ slug }: { slug: string }) {
                               <CornerUpLeft className="w-3 h-3" aria-hidden />
                               回复
                             </button>
-                            {confirmDel === c.d ? (
+                            {/* 云模式只给自己的评论显示删除（凭发评时领到的 secret）；giscus 模式不显示 */}
+                            {mode === 'cloud' && !ownSecret(c) ? null : confirmDel === c.d ? (
                               <span className="flex items-center gap-2" role="group" aria-label="确认删除">
                                 <button
                                   type="button"

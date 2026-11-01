@@ -1,0 +1,42 @@
+/* giscus 纸墨主题 · 宣纸（亮色）
+   色值取自站点 app/globals.css 的 .light token，giscus 以 <link> 方式把这份文件
+   加载进自己的 iframe，变量定义在 main 上。 */
+
+main {
+  --color-canvas-default: #f2ece1;
+  --color-canvas-overlay: #faf5ea;
+  --color-canvas-inset: #efe7d8;
+  --color-canvas-subtle: #faf5ea;
+
+  --color-border-default: rgba(54, 42, 30, 0.3);
+  --color-border-muted: rgba(54, 42, 30, 0.16);
+
+  --color-fg-default: #221b13;
+  --color-fg-muted: #5a4d3d;
+  --color-fg-subtle: #695a49;
+
+  --color-accent-emphasis: #9e3b2e;
+  --color-accent-fg: #9e3b2e;
+  --color-accent-subtle: rgba(158, 59, 46, 0.1);
+
+  --color-attention-subtle: rgba(158, 59, 46, 0.08);
+  --color-success-emphasis: #5a6b3a;
+  --color-danger-emphasis: #9e3b2e;
+
+  --color-btn-bg: #faf5ea;
+  --color-btn-border: rgba(54, 42, 30, 0.3);
+  --color-btn-text: #221b13;
+  --color-btn-hover-bg: #efe7d8;
+  --color-btn-hover-border: rgba(54, 42, 30, 0.3);
+
+  --color-btn-primary-bg: #9e3b2e;
+  --color-btn-primary-border: #9e3b2e;
+  --color-btn-primary-text: #ffffff;
+  --color-btn-primary-hover-bg: #b14a36;
+  --color-btn-primary-hover-border: #b14a36;
+
+  --color-header-bg: #faf5ea;
+  --color-header-text: #221b13;
+
+  --font-family-sans: 'Geist Sans', ui-sans-serif, system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}

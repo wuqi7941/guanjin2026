@@ -1,0 +1,9 @@
+name = "embers-blog"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-01-01"
+
+# 评论数据库（Pages Functions 里以 env.COMMENTS_DB 访问）
+[[d1_databases]]
+binding = "COMMENTS_DB"
+database_name = "embers-comments"
+database_id = "84f4997e-ee23-4cf1-be38-08b81e022fe4"

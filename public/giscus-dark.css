@@ -1,0 +1,41 @@
+/* giscus 纸墨主题 · 烬夜（暗色）
+   色值取自站点 app/globals.css 的暗色 token（--canvas #17130e / --ink #ece3d6 / --accent #b7583f）。 */
+
+main {
+  --color-canvas-default: #17130e;
+  --color-canvas-overlay: #1e1913;
+  --color-canvas-inset: #1e1913;
+  --color-canvas-subtle: #262019;
+
+  --color-border-default: rgba(228, 214, 196, 0.26);
+  --color-border-muted: rgba(228, 214, 196, 0.14);
+
+  --color-fg-default: #ece3d6;
+  --color-fg-muted: #b0a18c;
+  --color-fg-subtle: #958774;
+
+  --color-accent-emphasis: #b7583f;
+  --color-accent-fg: #c4634a;
+  --color-accent-subtle: rgba(183, 88, 63, 0.12);
+
+  --color-attention-subtle: rgba(196, 99, 74, 0.1);
+  --color-success-emphasis: #7a8f4e;
+  --color-danger-emphasis: #b7583f;
+
+  --color-btn-bg: #1e1913;
+  --color-btn-border: rgba(228, 214, 196, 0.26);
+  --color-btn-text: #ece3d6;
+  --color-btn-hover-bg: #262019;
+  --color-btn-hover-border: rgba(228, 214, 196, 0.26);
+
+  --color-btn-primary-bg: #b7583f;
+  --color-btn-primary-border: #b7583f;
+  --color-btn-primary-text: #ffffff;
+  --color-btn-primary-hover-bg: #c96a4d;
+  --color-btn-primary-hover-border: #c96a4d;
+
+  --color-header-bg: #1e1913;
+  --color-header-text: #ece3d6;
+
+  --font-family-sans: 'Geist Sans', ui-sans-serif, system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
