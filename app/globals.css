@@ -358,6 +358,13 @@ button,
 }
 
 /* 每次整页导航的轻量入场：配合 PageTransition 的淡出 → 揭开（无 transform，避免牵连 fixed 层） */
+/* viewport-fit=cover 后页面延伸进顶部安全区：文档流整体下推，
+   fixed 的菜单栏自己垫（.glass-nav 里的 padding-top）——两层各管各的 */
+html {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: 0;
+}
+
 body {
   animation: page-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
   font-family: var(--serif-body);
@@ -719,10 +726,30 @@ html.scrolling .card-static {
 
 /* ============ NAV ============ */
 .glass-nav {
-  background: color-mix(in srgb, var(--canvas) 72%, transparent);
-  border-bottom: 1px solid var(--hairline);
+  /* 微信 X5/XWeb 内核不支持 color-mix()，整条声明会被丢弃 → 菜单变全透明。
+     先给普通 rgba 兜底（亮/暗各一份），支持 color-mix 的浏览器再走增强。 */
+  background: rgba(242, 236, 225, 0.82);
+  border-bottom: 1px solid rgba(54, 42, 30, 0.16);
   backdrop-filter: blur(14px) saturate(150%);
   -webkit-backdrop-filter: blur(14px) saturate(150%);
+  /* 封装成 PWA（standalone）后 iOS 状态栏浮在页面顶上，不垫这个菜单就被压进刘海 */
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.dark .glass-nav {
+  background: rgba(23, 19, 14, 0.82);
+  border-bottom: 1px solid rgba(228, 214, 196, 0.14);
+}
+
+@supports (background: color-mix(in srgb, red 50%, transparent)) {
+  .glass-nav {
+    background: color-mix(in srgb, var(--canvas) 72%, transparent);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .dark .glass-nav {
+    background: color-mix(in srgb, var(--canvas) 72%, transparent);
+    border-bottom: 1px solid var(--hairline);
+  }
 }
 
 /* 滚动中：backdrop-filter 每帧重采样是卡顿大头，切为更高不透明实底 */
@@ -1739,12 +1766,23 @@ body {
   padding: 0 0.45rem 0 0.4rem;
   border: 1px solid var(--hairline-strong);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+  /* color-mix 降级：微信内核不认就整条丢弃，播放条会变全透明 */
+  background: rgba(250, 245, 234, 0.9);
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
   box-shadow: 0 14px 34px -22px rgba(35, 26, 18, 0.45), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
   z-index: 72;
   overflow: hidden;
+}
+
+.dark .mp-bar {
+  background: rgba(30, 25, 19, 0.9);
+}
+
+@supports (background: color-mix(in srgb, red 50%, transparent)) {
+  .mp-bar {
+    background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+  }
 }
 
 @media (max-width: 639px) {

@@ -80,10 +80,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   if (!/^[a-z0-9-]{1,64}$/.test(slug)) return json({ error: 'bad slug' }, 400)
 
   const { results } = await env.COMMENTS_DB.prepare(
-    'SELECT id, name, body, reply_to, created_at FROM comments WHERE slug = ? ORDER BY created_at ASC, id ASC LIMIT 500',
+    'SELECT id, name, body, reply_to, avatar, created_at FROM comments WHERE slug = ? ORDER BY created_at ASC, id ASC LIMIT 500',
   )
     .bind(slug)
-    .all<{ id: number; name: string; body: string; reply_to: number | null; created_at: number }>()
+    .all<{ id: number; name: string; body: string; reply_to: number | null; avatar: number | null; created_at: number }>()
 
   return json({
     comments: (results ?? []).map((r) => ({
@@ -91,13 +91,14 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       name: r.name,
       body: r.body,
       replyTo: r.reply_to,
+      avatar: r.avatar,
       createdAt: r.created_at,
     })),
   })
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
-  let input: { slug?: string; name?: string; body?: string; replyTo?: number }
+  let input: { slug?: string; name?: string; body?: string; replyTo?: number; avatar?: number }
   try {
     input = await request.json()
   } catch {
@@ -111,6 +112,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const body = clean(input.body, BODY_MAX)
   if (body.length < BODY_MIN) return json({ error: '内容是空的' }, 400)
   const replyTo = typeof input.replyTo === 'number' && input.replyTo > 0 ? Math.floor(input.replyTo) : null
+  /* 头像：0–11 的索引，必填（前端强制选择），越界一律拒绝 */
+  const AVATAR_MAX = 11
+  const avatar =
+    typeof input.avatar === 'number' && Number.isInteger(input.avatar) && input.avatar >= 0 && input.avatar <= AVATAR_MAX
+      ? input.avatar
+      : null
 
   const ip = await ipHash(request)
 
@@ -140,13 +147,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const createdAt = Date.now()
 
   const r = await env.COMMENTS_DB.prepare(
-    'INSERT INTO comments (slug, name, body, reply_to, secret, ip_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO comments (slug, name, body, reply_to, secret, ip_hash, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
   )
-    .bind(slug, name, body, replyTo, secret, ip, createdAt)
+    .bind(slug, name, body, replyTo, secret, ip, avatar, createdAt)
     .run()
 
   if (!r.success) return json({ error: '写入失败' }, 500)
-  return json({ id: r.meta.last_row_id, name, body, replyTo, createdAt, secret }, 200)
+  return json({ id: r.meta.last_row_id, name, body, replyTo, avatar, createdAt, secret }, 200)
 }
 
 export const onRequestDelete: PagesFunction<Env> = async ({ request, env }) => {

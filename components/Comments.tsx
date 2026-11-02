@@ -13,6 +13,7 @@ interface Reply {
   n: string
   t: string
   d: number
+  avatar?: number
 }
 
 interface CommentItem {
@@ -22,6 +23,8 @@ interface CommentItem {
   r: Reply[]
   /* 云端主评论的真实 id：删除时用它 + 本地存的 secret */
   id?: number
+  /* 头像索引：旧数据（2026-11-02 前）没有这个字段，按名字哈希兜底 */
+  avatar?: number | null
 }
 
 interface CloudComment {
@@ -29,12 +32,27 @@ interface CloudComment {
   name: string
   body: string
   replyTo: number | null
+  avatar: number | null
   createdAt: number
 }
 
-const AV_EMOJI = ['🦊', '🐱', '🐼', '🐸', '🐙', '🦉', '🐰', '🐻', '🐯', '🦄', '🐳', '🦋']
-const AV_COLORS = ['#ff6a3d', '#8b7bff', '#28e0b0', '#ffb020', '#ff5d8f', '#3fb6ff', '#a0d860', '#ff8f4d']
+/* 头像不再自动哈希生成——读者从这 12 个里挑一个，名字和颜色固定成对 */
+const AVATARS: Array<{ emoji: string; color: string }> = [
+  { emoji: '🦊', color: '#ff6a3d' },
+  { emoji: '🐱', color: '#ffb020' },
+  { emoji: '🐻', color: '#a4703d' },
+  { emoji: '🐸', color: '#a0d860' },
+  { emoji: '🐼', color: '#8b7bff' },
+  { emoji: '🐙', color: '#ff5d8f' },
+  { emoji: '🦉', color: '#3fb6ff' },
+  { emoji: '🐰', color: '#f7b3c8' },
+  { emoji: '🐯', color: '#e8a34d' },
+  { emoji: '🦄', color: '#b98ff2' },
+  { emoji: '🐳', color: '#5ad0e8' },
+  { emoji: '🦋', color: '#7ee081' },
+]
 const NAME_KEY = 'embers_cmt_name'
+const AVATAR_KEY = 'embers_cmt_avatar'
 const NAME_MAX = 12
 
 function hashStr(s: string): number {
@@ -44,8 +62,9 @@ function hashStr(s: string): number {
 }
 
 function avatarOf(name: string): { emoji: string; color: string } {
+  /* 旧数据兜底：2026-11-02 前的评论没存 avatar，按名字哈希出一个近似观感 */
   const h = hashStr(name || '匿名')
-  return { emoji: AV_EMOJI[h % AV_EMOJI.length], color: AV_COLORS[h % AV_COLORS.length] }
+  return AVATARS[h % AVATARS.length]
 }
 
 function timeAgo(ts: number): string {
@@ -65,6 +84,7 @@ export function Comments({ slug }: { slug: string }) {
 
   const [items, setItems] = useState<CommentItem[]>([])
   const [name, setName] = useState('')
+  const [avatar, setAvatar] = useState<number | null>(null)
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
@@ -77,11 +97,13 @@ export function Comments({ slug }: { slug: string }) {
 
   const SECRETS_KEY = `embers_cmt_secret_${slug}`
 
-  /* 昵称：说过一次就记住 */
+  /* 昵称与头像：说过 / 选过一次就记住 */
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(NAME_KEY)
-      if (saved) setName(saved)
+      const savedName = localStorage.getItem(NAME_KEY)
+      if (savedName) setName(savedName)
+      const savedAv = parseInt(localStorage.getItem(AVATAR_KEY) || '', 10)
+      if (Number.isInteger(savedAv) && savedAv >= 0 && savedAv < AVATARS.length) setAvatar(savedAv)
     } catch {
       /* ignore */
     }
@@ -91,6 +113,15 @@ export function Comments({ slug }: { slug: string }) {
     setName(v)
     try {
       localStorage.setItem(NAME_KEY, v)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const commitAvatar = (i: number) => {
+    setAvatar(i)
+    try {
+      localStorage.setItem(AVATAR_KEY, String(i))
     } catch {
       /* ignore */
     }
@@ -115,9 +146,9 @@ export function Comments({ slug }: { slug: string }) {
     const top: CommentItem[] = []
     const byId = new Map<number, CommentItem>()
     for (const f of flat) {
-      const item: CommentItem = { n: f.name, t: f.body, d: f.createdAt, r: [], id: f.id }
+      const item: CommentItem = { n: f.name, t: f.body, d: f.createdAt, r: [], id: f.id, avatar: f.avatar }
       const parent = f.replyTo ? byId.get(f.replyTo) : undefined
-      if (parent) parent.r.push({ n: item.n, t: item.t, d: item.d })
+      if (parent) parent.r.push({ n: item.n, t: item.t, d: item.d, avatar: item.avatar ?? undefined })
       else top.push(item)
       byId.set(f.id, item)
     }
@@ -151,12 +182,16 @@ export function Comments({ slug }: { slug: string }) {
   const publish = () => {
     const t = text.trim()
     if (!t || sending) return
+    if (avatar === null) {
+      setErr('先挑一个头像，再说话')
+      return
+    }
     setSending(true)
     setErr('')
     fetch('/api/comments', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ slug, name: name.trim() || '匿名', body: t }),
+      body: JSON.stringify({ slug, name: name.trim() || '匿名', body: t, avatar }),
     })
       .then(async (r) => {
         const j = await r.json()
@@ -165,7 +200,7 @@ export function Comments({ slug }: { slug: string }) {
           return
         }
         rememberSecret(j.id, j.secret)
-        setItems((prev) => [{ n: j.name, t: j.body, d: j.createdAt, r: [], id: j.id }, ...prev])
+        setItems((prev) => [{ n: j.name, t: j.body, d: j.createdAt, r: [], id: j.id, avatar: j.avatar }, ...prev])
         setText('')
         setSent(true)
         window.setTimeout(() => setSent(false), 1600)
@@ -187,6 +222,10 @@ export function Comments({ slug }: { slug: string }) {
   const submitReply = (d: number) => {
     const t = replyText.trim()
     if (!t || sending) return
+    if (avatar === null) {
+      setErr('先挑一个头像，再说话')
+      return
+    }
     const parent = items.find((c) => c.d === d)
     if (!parent?.id) {
       setErr('要回复的评论已不存在')
@@ -197,7 +236,7 @@ export function Comments({ slug }: { slug: string }) {
     fetch('/api/comments', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ slug, name: name.trim() || '匿名', body: t, replyTo: parent.id }),
+      body: JSON.stringify({ slug, name: name.trim() || '匿名', body: t, replyTo: parent.id, avatar }),
     })
       .then(async (r) => {
         const j = await r.json()
@@ -207,7 +246,9 @@ export function Comments({ slug }: { slug: string }) {
         }
         rememberSecret(j.id, j.secret)
         setItems((prev) =>
-          prev.map((c) => (c.d === d ? { ...c, r: [...c.r, { n: j.name, t: j.body, d: j.createdAt }] } : c)),
+          prev.map((c) =>
+            c.d === d ? { ...c, r: [...c.r, { n: j.name, t: j.body, d: j.createdAt, avatar: j.avatar }] } : c,
+          ),
         )
         setReplyingTo(null)
         setReplyText('')
@@ -272,6 +313,42 @@ export function Comments({ slug }: { slug: string }) {
             }}
             className="flex flex-col gap-3"
           >
+            {/* 头像：强制选择，选过的自动带出 */}
+            <div role="radiogroup" aria-label="挑一个头像">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[11px] font-mono text-[var(--ink-tertiary)]">
+                  {avatar === null ? '挑一个头像（必选）' : '你的头像'}
+                </span>
+                {avatar !== null && (
+                  <span className="text-[11px] text-[var(--ink-subtle)]">
+                    {name.trim() ? `${name.trim().slice(0, NAME_MAX)} · ${AVATARS[avatar].emoji}` : '匿名 · ' + AVATARS[avatar].emoji}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {AVATARS.map((a, i) => {
+                  const picked = avatar === i
+                  return (
+                    <button
+                      key={a.emoji + i}
+                      type="button"
+                      role="radio"
+                      aria-checked={picked}
+                      aria-label={`头像：${a.emoji}`}
+                      onClick={() => commitAvatar(i)}
+                      className={`w-10 h-10 grid place-items-center rounded-xl text-lg transition-all duration-200 active:scale-[0.94] ${
+                        picked
+                          ? 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface-1)] scale-105'
+                          : 'opacity-70 hover:opacity-100 hover:scale-105'
+                      }`}
+                      style={{ background: a.color, boxShadow: picked ? `0 4px 14px -6px ${a.color}` : undefined }}
+                    >
+                      <span aria-hidden>{a.emoji}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
             <div className="flex flex-wrap items-center gap-3">
               <label htmlFor={`cmt-name-${slug}`} className="text-[11px] font-mono text-[var(--ink-tertiary)]">
                 昵称
@@ -286,9 +363,7 @@ export function Comments({ slug }: { slug: string }) {
                 /* 手机端 16px：更小的字号会让 iOS 聚焦时自动放大页面 */
                 className="w-40 px-3.5 py-2 rounded-xl text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
               />
-              <span className="text-[11px] text-[var(--ink-tertiary)]">
-                头像跟着名字走 · {name.trim() ? `${name.trim().slice(0, NAME_MAX)} 的${avatarOf(name).emoji}` : '匿名'}
-              </span>
+              <span className="text-[11px] text-[var(--ink-tertiary)]">名字可留空，头像必须挑一个</span>
             </div>
             <label htmlFor={`cmt-text-${slug}`} className="sr-only">
               留言内容
@@ -347,9 +422,10 @@ export function Comments({ slug }: { slug: string }) {
                 {emptyState}
               </m.li>
             )}
-            {items.map((c) => {
-              const av = avatarOf(c.n)
-              return (
+                {items.map((c) => {
+                  /* 新评论用选定的头像；旧数据（无 avatar 字段）按名字哈希兜底 */
+                  const av = typeof c.avatar === 'number' && AVATARS[c.avatar] ? AVATARS[c.avatar] : avatarOf(c.n)
+                  return (
                 <m.li key={c.d} layout={reduce ? undefined : true} {...anim} className="flex gap-3.5">
                   <span
                     aria-hidden
@@ -428,8 +504,9 @@ export function Comments({ slug }: { slug: string }) {
 
                     {c.r.length > 0 && (
                       <ul className="mt-2 ml-4 flex flex-col gap-2">
-                        {c.r.map((x) => {
-                          const rav = avatarOf(x.n)
+                            {c.r.map((x) => {
+                              const rav =
+                                typeof x.avatar === 'number' && AVATARS[x.avatar] ? AVATARS[x.avatar] : avatarOf(x.n)
                           return (
                             <li key={x.d} className="flex gap-2.5">
                               <span
