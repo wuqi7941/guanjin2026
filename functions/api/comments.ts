@@ -47,7 +47,12 @@ const json = (data: unknown, status = 200) =>
     status,
     headers: {
       'content-type': 'application/json; charset=utf-8',
-      'cache-control': 'no-store',
+      /* GET 响应可被边缘缓存 30 秒并容许 5 分钟内回源旧值——评论不必毫秒级新鲜，
+         但每个访客每次进文章都打 D1 就浪费了；POST/DELETE 依旧 no-store */
+      'cache-control':
+        status === 200
+          ? 'public, max-age=30, stale-while-revalidate=300'
+          : 'no-store',
       'access-control-allow-origin': '*',
       'access-control-allow-headers': 'content-type',
     },

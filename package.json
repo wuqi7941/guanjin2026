@@ -41,5 +41,14 @@
     },
     "nanoid": "^3.3.18",
     "source-map-js": "^1.2.2"
-  }
+  },
+  "browserslist": [
+    "chrome >= 88",
+    "edge >= 88",
+    "firefox >= 89",
+    "safari >= 15.4",
+    "and_chr >= 96",
+    "ios_saf >= 15.4",
+    "not dead"
+  ]
 }

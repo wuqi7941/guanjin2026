@@ -384,6 +384,14 @@ export function Comments({ slug }: { slug: string }) {
               placeholder="写点什么… 别太客气。（Ctrl+Enter 发送）"
               className="px-3.5 py-3 rounded-xl text-[16px] sm:text-sm leading-relaxed bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none resize-y transition-colors duration-200 focus:border-[var(--accent)]"
             />
+            {text.length > 420 && (
+              <p
+                aria-live="polite"
+                className={`text-[11px] font-mono -mt-1.5 text-right ${text.length >= 500 ? 'text-[var(--accent)]' : 'text-[var(--ink-tertiary)]'}`}
+              >
+                {500 - text.length}
+              </p>
+            )}
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-mono text-[var(--ink-subtle)]">
                 {items.length > 0 ? `${items.length} 条留言` : '0 条留言'}
