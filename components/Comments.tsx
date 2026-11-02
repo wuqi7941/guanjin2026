@@ -1,12 +1,13 @@
 'use client'
 
-import { EASE } from '@/lib/motion'
-import { GISCUS } from '@/lib/site'
-import { useEffect, useRef, useState } from 'react'
-import { useTheme } from 'next-themes'
-import { m, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { CornerUpLeft, Feather, Github, Loader2, MessageCircle, Send, Trash2 } from 'lucide-react'
+/* 评论区：发在 Cloudflare D1 里（Pages Functions + 自建 API），免登录。
+   读者自己起昵称，昵称决定头像；说过一次会被记住，下次自动带出来。
+   （2026-11-02：giscus 分支整体移除，改用单一评论区。） */
 
+import { EASE } from '@/lib/motion'
+import { useEffect, useRef, useState } from 'react'
+import { m, AnimatePresence, useReducedMotion } from 'framer-motion'
+import { CornerUpLeft, Loader2, MessageCircle, Send, Trash2 } from 'lucide-react'
 
 interface Reply {
   n: string
@@ -33,6 +34,8 @@ interface CloudComment {
 
 const AV_EMOJI = ['🦊', '🐱', '🐼', '🐸', '🐙', '🦉', '🐰', '🐻', '🐯', '🦄', '🐳', '🦋']
 const AV_COLORS = ['#ff6a3d', '#8b7bff', '#28e0b0', '#ffb020', '#ff5d8f', '#3fb6ff', '#a0d860', '#ff8f4d']
+const NAME_KEY = 'embers_cmt_name'
+const NAME_MAX = 12
 
 function hashStr(s: string): number {
   let h = 0
@@ -58,17 +61,7 @@ function timeAgo(ts: number): string {
 const emptyState = '还没有人说话。你是第一个。'
 
 export function Comments({ slug }: { slug: string }) {
-  const { resolvedTheme } = useTheme()
   const reduce = !!useReducedMotion()
-  const hostRef = useRef<HTMLDivElement>(null)
-
-  /* cloud = 自建免登录评论（Cloudflare Functions + D1）；giscus = GitHub Discussions */
-  const [mode, setMode] = useState<'giscus' | 'cloud'>('giscus')
-  /* 偏好读取完成前不挂 giscus：偏好是「匿名」的用户，首屏不该先白加载一次 giscus 再卸载 */
-  const [prefReady, setPrefReady] = useState(false)
-  const [gsFailed, setGsFailed] = useState(false)
-  const [gsNotice, setGsNotice] = useState(false)
-  const [gsLoading, setGsLoading] = useState(true)
 
   const [items, setItems] = useState<CommentItem[]>([])
   const [name, setName] = useState('')
@@ -78,126 +71,30 @@ export function Comments({ slug }: { slug: string }) {
   const [replyingTo, setReplyingTo] = useState<number | null>(null)
   const [replyText, setReplyText] = useState('')
   const [confirmDel, setConfirmDel] = useState<number | null>(null)
+  const [secrets, setSecrets] = useState<Record<string, string>>({})
+  const [err, setErr] = useState('')
+  const [loading, setLoading] = useState(true)
 
-  const KEY = `embers_cmt_${slug}`
-  const themeRef = useRef(resolvedTheme)
-  useEffect(() => {
-    themeRef.current = resolvedTheme
-  }, [resolvedTheme])
+  const SECRETS_KEY = `embers_cmt_secret_${slug}`
 
-  /* 模式偏好：旧版本存的 'local' 就是现在的 cloud */
+  /* 昵称：说过一次就记住 */
   useEffect(() => {
     try {
-      const v = localStorage.getItem('embers_cmt_mode')
-      if (v === 'local' || v === 'cloud') setMode('cloud')
+      const saved = localStorage.getItem(NAME_KEY)
+      if (saved) setName(saved)
     } catch {
       /* ignore */
     }
-    setPrefReady(true)
   }, [])
 
-  const switchMode = (m: 'giscus' | 'cloud') => {
-    setMode(m)
-    /* 用户手动切回 GitHub 讨论：清掉失败标记，给它一次重新加载的机会 */
-    if (m === 'giscus') setGsFailed(false)
+  const commitName = (v: string) => {
+    setName(v)
     try {
-      localStorage.setItem('embers_cmt_mode', m)
+      localStorage.setItem(NAME_KEY, v)
     } catch {
       /* ignore */
     }
   }
-
-  /* Giscus：动态加载，20s 超时退回本地（自动回退不持久化偏好，见下方 gsFailed effect） */
-  useEffect(() => {
-    if (mode !== 'giscus' || gsFailed || !prefReady) return
-    const host = hostRef.current
-    if (!host) return
-    let cancelled = false
-
-    host.innerHTML = ''
-    setGsNotice(false)
-    setGsLoading(true)
-
-    const s = document.createElement('script')
-    s.src = 'https://giscus.app/client.js'
-    s.setAttribute('data-repo', GISCUS.repo)
-    s.setAttribute('data-repo-id', GISCUS.repoId)
-    s.setAttribute('data-category', GISCUS.category)
-    s.setAttribute('data-category-id', GISCUS.categoryId)
-    s.setAttribute('data-mapping', 'specific')
-    s.setAttribute('data-term', slug)
-    s.setAttribute('data-strict', '0')
-    s.setAttribute('data-reactions-enabled', '1')
-    s.setAttribute('data-emit-metadata', '0')
-    s.setAttribute('data-input-position', 'bottom')
-    /* 主题默认取 light：站点 defaultTheme 就是 light，undefined（首帧）时按 dark 建页
-       会让浅色用户长期看到深色评论区 */
-    /* 自定义纸墨主题：giscus 支持 data-theme 传 CSS 文件 URL，
-       iframe 里会加载它并应用变量（两套主题对应站点的明暗） */
-    s.setAttribute('data-theme', `${location.origin}/giscus-${themeRef.current === 'dark' ? 'dark' : 'light'}.css`)
-    s.setAttribute('data-lang', 'zh-CN')
-    s.crossOrigin = 'anonymous'
-    s.async = true
-    s.onerror = () => {
-      if (!cancelled) setGsFailed(true)
-    }
-    host.appendChild(s)
-
-    const timer = window.setTimeout(() => {
-      setGsLoading(false)
-      if (!cancelled && !host.querySelector('iframe')) setGsFailed(true)
-    }, 20000)
-
-    /* iframe 起来后补发一次主题：建页那一刻 resolvedTheme 可能还没解析（undefined→light），
-       暗色用户在这里补齐，不用等下一次切换主题 */
-    let themeTimer: ReturnType<typeof setTimeout> | undefined
-    const loaded = () => {
-      if (cancelled) return
-      setGsLoading(false)
-      themeTimer = setTimeout(() => {
-        host
-          .querySelector('iframe')
-          ?.contentWindow?.postMessage(
-            { giscus: { setConfig: { theme: `${location.origin}/giscus-${themeRef.current === 'dark' ? 'dark' : 'light'}.css` } } },
-            'https://giscus.app',
-          )
-      }, 1200)
-    }
-    s.addEventListener('load', loaded)
-
-    return () => {
-      cancelled = true
-      window.clearTimeout(timer)
-      if (themeTimer) clearTimeout(themeTimer)
-    }
-  }, [mode, slug, gsFailed, prefReady])
-
-  /* 主题切换：postMessage 更新 giscus iframe 主题，避免整块重建（reload 闪烁） */
-  useEffect(() => {
-    const iframe = hostRef.current?.querySelector('iframe')
-    /* undefined（首帧未解析）按 light 发——与建页时的默认一致，别让一个中间态发 dark */
-    iframe?.contentWindow?.postMessage(
-      { giscus: { setConfig: { theme: `${location.origin}/giscus-${resolvedTheme === 'dark' ? 'dark' : 'light'}.css` } } },
-      'https://giscus.app'
-    )
-  }, [resolvedTheme, mode])
-
-  /* Giscus 失败 → 自动切云评论。
-     自动回退只改内存态：一次网络抖动不该永久偷走 GitHub 讨论（偏好只在用户手点 tab 时持久化）。 */
-  useEffect(() => {
-    if (gsFailed) {
-      setGsNotice(true)
-      setMode('cloud')
-    }
-  }, [gsFailed])
-
-  /* ============ 云评论（自建 API）============ */
-
-  /* 自己发过的评论的删除凭据：id → secret，存本地 */
-  const SECRETS_KEY = `embers_cmt_secret_${slug}`
-  const [secrets, setSecrets] = useState<Record<string, string>>({})
-  const [cloudErr, setCloudErr] = useState('')
-  const [cloudLoading, setCloudLoading] = useState(false)
 
   const rememberSecret = (id: number, secret: string) => {
     try {
@@ -227,12 +124,11 @@ export function Comments({ slug }: { slug: string }) {
     return top.reverse()
   }
 
-  /* 加载云评论 */
+  /* 加载评论 */
   useEffect(() => {
-    if (mode !== 'cloud' || !prefReady) return
     let cancelled = false
-    setCloudLoading(true)
-    setCloudErr('')
+    setLoading(true)
+    setErr('')
     fetch(`/api/comments?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
       .then((j) => {
@@ -244,23 +140,19 @@ export function Comments({ slug }: { slug: string }) {
           /* ignore */
         }
       })
-      .catch(() => !cancelled && setCloudErr('评论加载失败，稍后再试'))
-      .finally(() => !cancelled && setCloudLoading(false))
+      .catch(() => !cancelled && setErr('评论加载失败，稍后再试'))
+      .finally(() => !cancelled && setLoading(false))
     return () => {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, slug, prefReady])
-
-  /* 提交反馈的定时器：卸载时清掉 */
-  const publishTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  useEffect(() => () => clearTimeout(publishTimer.current), [])
+  }, [slug])
 
   const publish = () => {
     const t = text.trim()
     if (!t || sending) return
     setSending(true)
-    setCloudErr('')
+    setErr('')
     fetch('/api/comments', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -269,7 +161,7 @@ export function Comments({ slug }: { slug: string }) {
       .then(async (r) => {
         const j = await r.json()
         if (!r.ok) {
-          setCloudErr(j.error || '发布失败')
+          setErr(j.error || '发布失败')
           return
         }
         rememberSecret(j.id, j.secret)
@@ -278,7 +170,7 @@ export function Comments({ slug }: { slug: string }) {
         setSent(true)
         window.setTimeout(() => setSent(false), 1600)
       })
-      .catch(() => setCloudErr('网络不通，稍后再试'))
+      .catch(() => setErr('网络不通，稍后再试'))
       .finally(() => setSending(false))
   }
 
@@ -297,11 +189,11 @@ export function Comments({ slug }: { slug: string }) {
     if (!t || sending) return
     const parent = items.find((c) => c.d === d)
     if (!parent?.id) {
-      setCloudErr('要回复的评论已不存在')
+      setErr('要回复的评论已不存在')
       return
     }
     setSending(true)
-    setCloudErr('')
+    setErr('')
     fetch('/api/comments', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -310,15 +202,17 @@ export function Comments({ slug }: { slug: string }) {
       .then(async (r) => {
         const j = await r.json()
         if (!r.ok) {
-          setCloudErr(j.error || '回复失败')
+          setErr(j.error || '回复失败')
           return
         }
         rememberSecret(j.id, j.secret)
-        setItems((prev) => prev.map((c) => (c.d === d ? { ...c, r: [...c.r, { n: j.name, t: j.body, d: j.createdAt }] } : c)))
+        setItems((prev) =>
+          prev.map((c) => (c.d === d ? { ...c, r: [...c.r, { n: j.name, t: j.body, d: j.createdAt }] } : c)),
+        )
         setReplyingTo(null)
         setReplyText('')
       })
-      .catch(() => setCloudErr('网络不通，稍后再试'))
+      .catch(() => setErr('网络不通，稍后再试'))
       .finally(() => setSending(false))
   }
 
@@ -326,15 +220,15 @@ export function Comments({ slug }: { slug: string }) {
     const target = items.find((c) => c.d === d)
     const secret = target?.id ? secrets[String(target.id)] : undefined
     if (!target?.id || !secret) {
-      setCloudErr('删除失败')
+      setErr('删除失败')
       return
     }
     fetch(`/api/comments?id=${target.id}&secret=${encodeURIComponent(secret)}`, { method: 'DELETE' })
       .then((r) => {
-        if (!r.ok) setCloudErr('删除失败')
+        if (!r.ok) setErr('删除失败')
         else setItems((prev) => prev.filter((c) => c.d !== d))
       })
-      .catch(() => setCloudErr('网络不通，稍后再试'))
+      .catch(() => setErr('网络不通，稍后再试'))
   }
 
   const anim = reduce
@@ -354,299 +248,238 @@ export function Comments({ slug }: { slug: string }) {
           评论区
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-[var(--ink-subtle)] max-w-[52ch]">
-          不是留言板，是火堆旁。想说什么都行——观烬会回。
+          不是留言板，是火堆旁。留个名字，或者不留——观烬会回。
         </p>
       </header>
 
-      <div
-        role="tablist"
-        aria-label="评论区模式"
-        onKeyDown={(e) => {
-          if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
-          e.preventDefault()
-          const next = mode === 'giscus' ? 'cloud' : 'giscus'
-          switchMode(next)
-          requestAnimationFrame(() => document.getElementById(`cmt-tab-${next}`)?.focus())
-        }}
-        className="inline-flex items-center gap-1 p-1 rounded-full border border-[var(--hairline)] bg-[var(--surface-2)]"
-      >
-        <button
-          role="tab"
-          id="cmt-tab-giscus"
-          aria-selected={mode === 'giscus'}
-          aria-controls="cmt-panel"
-          tabIndex={mode === 'giscus' ? 0 : -1}
-          type="button"
-          onClick={() => switchMode('giscus')}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-mono tracking-[0.08em] transition-colors duration-200 ${
-            mode === 'giscus'
-              ? 'bg-[var(--accent)] text-white'
-              : 'text-[var(--ink-subtle)] hover:text-[var(--ink)]'
-          }`}
-        >
-          <Github className="w-3.5 h-3.5" aria-hidden />
-          GitHub 讨论
-        </button>
-        <button
-          role="tab"
-          id="cmt-tab-local"
-          aria-selected={mode === 'cloud'}
-          aria-controls="cmt-panel"
-          tabIndex={mode === 'cloud' ? 0 : -1}
-          type="button"
-          onClick={() => switchMode('cloud')}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-mono tracking-[0.08em] transition-colors duration-200 ${
-            mode === 'cloud'
-              ? 'bg-[var(--accent)] text-white'
-              : 'text-[var(--ink-subtle)] hover:text-[var(--ink)]'
-          }`}
-        >
-          <Feather className="w-3.5 h-3.5" aria-hidden />
-          匿名留言
-        </button>
-      </div>
-
-      {gsNotice && mode === 'cloud' && (
-        <p className="mt-4 text-xs text-[var(--ink-subtle)]" role="status">
-          GitHub 讨论暂时不可用，已切换到匿名留言。
+      {loading && (
+        <p className="mb-4 text-xs font-mono text-[var(--ink-tertiary)]" role="status">
+          正在搬火堆…
+        </p>
+      )}
+      {err && (
+        <p className="mb-4 text-xs text-[var(--accent)]" role="alert">
+          {err}
         </p>
       )}
 
-      <div className="mt-6" id="cmt-panel" role="tabpanel" aria-labelledby={`cmt-tab-${mode}`}>
-        {mode === 'giscus' ? (
-          gsFailed ? null : (
-            <div
-              ref={hostRef}
-              className="min-h-[340px] rounded-2xl card-static p-2 overflow-hidden"
-              aria-busy={gsLoading}
-            />
-          )
-        ) : (
-          <m.div {...anim} key="cloud">
-          {cloudLoading && (
-            <p className="mb-4 text-xs font-mono text-[var(--ink-tertiary)]" role="status">
-              正在搬火堆…
-            </p>
-          )}
-          {cloudErr && (
-            <p className="mb-4 text-xs text-[var(--accent)]" role="alert">
-              {cloudErr}
-            </p>
-          )}
-          <div className="rounded-2xl card-static p-5 sm:p-6">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  publish()
-                }}
-                className="flex flex-col gap-3"
-              >
-                <div className="flex flex-wrap items-center gap-3">
-                  <label htmlFor={`cmt-name-${slug}`} className="sr-only">
-                    挑一个头像（昵称不显示）
-                  </label>
-                  <input
-                    id={`cmt-name-${slug}`}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    maxLength={20}
-                    placeholder="挑个专属头像（昵称不显示）"
-                    autoComplete="off"
-                    className="flex-1 min-w-[200px] px-3.5 py-2.5 rounded-xl text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
-                  />
-                  <span className="text-[11px] text-[var(--ink-tertiary)]">匿名留言 · 只显示头像</span>
-                </div>
-                <label htmlFor={`cmt-text-${slug}`} className="sr-only">
-                  留言内容
-                </label>
-                <textarea
-                  id={`cmt-text-${slug}`}
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  rows={3}
-                  maxLength={500}
-                  placeholder="写点什么… 别太客气。"
-                  className="px-3.5 py-3 rounded-xl text-sm leading-relaxed bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none resize-y transition-colors duration-200 focus:border-[var(--accent)]"
-                />
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-mono text-[var(--ink-subtle)]">
-                    {items.length > 0 ? `${items.length} 条留言` : '0 条留言'}
-                  </span>
-                  <button
-                    type="submit"
-                    disabled={sending || !text.trim()}
-                    className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                      sending || !text.trim()
-                        ? 'opacity-45 cursor-not-allowed'
-                        : 'bg-[var(--accent)] text-white hover:opacity-90'
-                    }`}
-                  >
-                    {sending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
-                    ) : sent ? (
-                      <span aria-live="polite">已丢进火里 ✓</span>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4" aria-hidden />
-                        发布
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
+      <m.div {...anim}>
+        <div className="rounded-2xl card-static p-5 sm:p-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              publish()
+            }}
+            className="flex flex-col gap-3"
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              <label htmlFor={`cmt-name-${slug}`} className="text-[11px] font-mono text-[var(--ink-tertiary)]">
+                昵称
+              </label>
+              <input
+                id={`cmt-name-${slug}`}
+                value={name}
+                onChange={(e) => commitName(e.target.value)}
+                maxLength={NAME_MAX}
+                placeholder="留空就叫匿名"
+                autoComplete="nickname"
+                className="w-40 px-3.5 py-2 rounded-xl text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
+              />
+              <span className="text-[11px] text-[var(--ink-tertiary)]">
+                头像跟着名字走 · {name.trim() ? `${name.trim().slice(0, NAME_MAX)} 的${avatarOf(name).emoji}` : '匿名'}
+              </span>
             </div>
-
-            <ul className="mt-6 flex flex-col gap-4">
-              <AnimatePresence initial={false}>
-                {items.length === 0 && (
-                  <m.li
-                    {...anim}
-                    className="px-5 py-8 text-center text-sm text-[var(--ink-subtle)] rounded-2xl border border-dashed border-[var(--hairline)]"
-                  >
-                    {emptyState}
-                  </m.li>
+            <label htmlFor={`cmt-text-${slug}`} className="sr-only">
+              留言内容
+            </label>
+            <textarea
+              id={`cmt-text-${slug}`}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={3}
+              maxLength={500}
+              placeholder="写点什么… 别太客气。"
+              className="px-3.5 py-3 rounded-xl text-sm leading-relaxed bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none resize-y transition-colors duration-200 focus:border-[var(--accent)]"
+            />
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-mono text-[var(--ink-subtle)]">
+                {items.length > 0 ? `${items.length} 条留言` : '0 条留言'}
+              </span>
+              <button
+                type="submit"
+                disabled={sending || !text.trim()}
+                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                  sending || !text.trim()
+                    ? 'opacity-45 cursor-not-allowed'
+                    : 'bg-[var(--accent)] text-white hover:opacity-90'
+                }`}
+              >
+                {sending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                ) : sent ? (
+                  <span aria-live="polite">已丢进火里 ✓</span>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" aria-hidden />
+                    发布
+                  </>
                 )}
-                {items.map((c) => {
-                  const av = avatarOf(c.n)
-                  return (
-                    <m.li
-                      key={c.d}
-                      layout={reduce ? undefined : true}
-                      {...anim}
-                      className="flex gap-3.5"
-                    >
-                      <span
-                        aria-hidden
-                        className="flex-none w-10 h-10 grid place-items-center rounded-xl text-lg shadow-sm"
-                        style={{ background: av.color, boxShadow: `0 4px 14px -6px ${av.color}` }}
-                      >
-                        {av.emoji}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="rounded-xl rounded-tl-[4px] card-static px-4 py-3">
-                          <div className="flex items-center gap-3 mb-1.5">
-                            <time dateTime={new Date(c.d).toISOString()} className="text-[11px] font-mono text-[var(--ink-tertiary)]">
-                              {timeAgo(c.d)}
-                            </time>
-                            <span className="flex-1" />
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <ul className="mt-6 flex flex-col gap-4">
+          <AnimatePresence initial={false}>
+            {items.length === 0 && !loading && (
+              <m.li
+                {...anim}
+                className="px-5 py-8 text-center text-sm text-[var(--ink-subtle)] rounded-2xl border border-dashed border-[var(--hairline)]"
+              >
+                {emptyState}
+              </m.li>
+            )}
+            {items.map((c) => {
+              const av = avatarOf(c.n)
+              return (
+                <m.li key={c.d} layout={reduce ? undefined : true} {...anim} className="flex gap-3.5">
+                  <span
+                    aria-hidden
+                    className="flex-none w-10 h-10 grid place-items-center rounded-xl text-lg shadow-sm"
+                    style={{ background: av.color, boxShadow: `0 4px 14px -6px ${av.color}` }}
+                  >
+                    {av.emoji}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="rounded-xl rounded-tl-[4px] card-static px-4 py-3">
+                      <div className="flex items-center gap-3 mb-1.5">
+                        <span className="text-[13px] font-medium text-[var(--ink)] truncate max-w-[10rem]">{c.n}</span>
+                        <time dateTime={new Date(c.d).toISOString()} className="text-[11px] font-mono text-[var(--ink-tertiary)]">
+                          {timeAgo(c.d)}
+                        </time>
+                        <span className="flex-1" />
+                        <button
+                          type="button"
+                          onClick={() => replyTo(c.d)}
+                          aria-label="回复这条留言"
+                          className="flex items-center gap-1 text-[11px] font-mono text-[var(--ink-subtle)] hover:text-[var(--accent)] transition-colors duration-200"
+                        >
+                          <CornerUpLeft className="w-3 h-3" aria-hidden />
+                          回复
+                        </button>
+                        {/* 只给自己的留言显示删除（凭发评时领到的 secret） */}
+                        {!ownSecret(c) ? null : confirmDel === c.d ? (
+                          <span className="flex items-center gap-2" role="group" aria-label="确认删除">
                             <button
                               type="button"
-                              onClick={() => replyTo(c.d)}
-                              aria-label="回复这条留言"
-                              className="flex items-center gap-1 text-[11px] font-mono text-[var(--ink-subtle)] hover:text-[var(--accent)] transition-colors duration-200"
-                            >
-                              <CornerUpLeft className="w-3 h-3" aria-hidden />
-                              回复
-                            </button>
-                            {/* 云模式只给自己的评论显示删除（凭发评时领到的 secret）；giscus 模式不显示 */}
-                            {mode === 'cloud' && !ownSecret(c) ? null : confirmDel === c.d ? (
-                              <span className="flex items-center gap-2" role="group" aria-label="确认删除">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    remove(c.d)
-                                    setConfirmDel(null)
-                                  }}
-                                  className="text-[11px] font-mono text-[var(--accent)] hover:opacity-80 transition-opacity duration-200"
-                                >
-                                  确认删除
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setConfirmDel(null)}
-                                  className="text-[11px] font-mono text-[var(--ink-subtle)] hover:text-[var(--ink)] transition-colors duration-200"
-                                >
-                                  取消
-                                </button>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setConfirmDel(c.d)}
-                                aria-label="删除这条留言"
-                                className="flex items-center gap-1 text-[11px] font-mono text-[var(--ink-tertiary)] hover:text-[var(--accent)] transition-colors duration-200"
-                              >
-                                <Trash2 className="w-3 h-3" aria-hidden />
-                                删除
-                              </button>
-                            )}
-                          </div>
-                          <p className="text-sm leading-relaxed text-[var(--ink-muted)] whitespace-pre-wrap break-words">
-                            {c.t}
-                          </p>
-                        </div>
-
-                        {c.r.length > 0 && (
-                          <ul className="mt-2 ml-4 flex flex-col gap-2">
-                            {c.r.map((x) => {
-                              const rav = avatarOf(x.n)
-                              return (
-                                <li key={x.d} className="flex gap-2.5">
-                                  <span
-                                    aria-hidden
-                                    className="flex-none w-6 h-6 grid place-items-center rounded-lg text-xs"
-                                    style={{ background: rav.color }}
-                                  >
-                                    {rav.emoji}
-                                  </span>
-                                  <div className="flex-1 min-w-0 rounded-lg rounded-tl-[3px] bg-[var(--surface-2)] border border-[var(--hairline)] px-3 py-2">
-                                    <time dateTime={new Date(x.d).toISOString()} className="text-[10px] font-mono text-[var(--ink-tertiary)]">
-                                      {timeAgo(x.d)}
-                                    </time>
-                                    <p className="mt-1 text-[13px] leading-relaxed text-[var(--ink-muted)] whitespace-pre-wrap break-words">
-                                      {x.t}
-                                    </p>
-                                  </div>
-                                </li>
-                              )
-                            })}
-                          </ul>
-                        )}
-
-                        <AnimatePresence>
-                          {replyingTo === c.d && (
-                            <m.form
-                              {...anim}
-                              onSubmit={(e) => {
-                                e.preventDefault()
-                                submitReply(c.d)
+                              onClick={() => {
+                                remove(c.d)
+                                setConfirmDel(null)
                               }}
-                              className="mt-2.5 ml-4 flex gap-2 items-start"
+                              className="text-[11px] font-mono text-[var(--accent)] hover:opacity-80 transition-opacity duration-200"
                             >
-                              <label htmlFor={`cmt-reply-${c.d}`} className="sr-only">
-                                回复内容
-                              </label>
-                              <input
-                                id={`cmt-reply-${c.d}`}
-                                value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
-                                maxLength={200}
-                                placeholder="回复…"
-                                className="flex-1 min-w-0 px-3 py-2 rounded-lg text-[13px] bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
-                              />
-                              <button
-                                type="submit"
-                                disabled={!replyText.trim()}
-                                className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
-                                  replyText.trim()
-                                    ? 'bg-[var(--accent)] text-white hover:opacity-90'
-                                    : 'opacity-45 cursor-not-allowed'
-                                }`}
-                              >
-                                发
-                              </button>
-                            </m.form>
-                          )}
-                        </AnimatePresence>
+                              确认删除
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDel(null)}
+                              className="text-[11px] font-mono text-[var(--ink-subtle)] hover:text-[var(--ink)] transition-colors duration-200"
+                            >
+                              取消
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDel(c.d)}
+                            aria-label="删除这条留言"
+                            className="flex items-center gap-1 text-[11px] font-mono text-[var(--ink-tertiary)] hover:text-[var(--accent)] transition-colors duration-200"
+                          >
+                            <Trash2 className="w-3 h-3" aria-hidden />
+                            删除
+                          </button>
+                        )}
                       </div>
-                    </m.li>
-                  )
-                })}
-              </AnimatePresence>
-            </ul>
-          </m.div>
-        )}
-      </div>
+                      <p className="text-sm leading-relaxed text-[var(--ink-muted)] whitespace-pre-wrap break-words">
+                        {c.t}
+                      </p>
+                    </div>
+
+                    {c.r.length > 0 && (
+                      <ul className="mt-2 ml-4 flex flex-col gap-2">
+                        {c.r.map((x) => {
+                          const rav = avatarOf(x.n)
+                          return (
+                            <li key={x.d} className="flex gap-2.5">
+                              <span
+                                aria-hidden
+                                className="flex-none w-6 h-6 grid place-items-center rounded-lg text-xs"
+                                style={{ background: rav.color }}
+                              >
+                                {rav.emoji}
+                              </span>
+                              <div className="flex-1 min-w-0 rounded-lg rounded-tl-[3px] bg-[var(--surface-2)] border border-[var(--hairline)] px-3 py-2">
+                                <div className="flex items-baseline gap-2">
+                                  <span className="text-[12px] font-medium text-[var(--ink)] truncate max-w-[8rem]">
+                                    {x.n}
+                                  </span>
+                                  <time
+                                    dateTime={new Date(x.d).toISOString()}
+                                    className="text-[10px] font-mono text-[var(--ink-tertiary)]"
+                                  >
+                                    {timeAgo(x.d)}
+                                  </time>
+                                </div>
+                                <p className="mt-1 text-[13px] leading-relaxed text-[var(--ink-muted)] whitespace-pre-wrap break-words">
+                                  {x.t}
+                                </p>
+                              </div>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+
+                    <AnimatePresence>
+                      {replyingTo === c.d && (
+                        <m.form
+                          {...anim}
+                          onSubmit={(e) => {
+                            e.preventDefault()
+                            submitReply(c.d)
+                          }}
+                          className="mt-2.5 ml-4 flex gap-2 items-start"
+                        >
+                          <label htmlFor={`cmt-reply-${c.d}`} className="sr-only">
+                            回复内容
+                          </label>
+                          <input
+                            id={`cmt-reply-${c.d}`}
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            maxLength={200}
+                            placeholder="回复…"
+                            className="flex-1 min-w-0 px-3 py-2 rounded-lg text-[13px] bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
+                          />
+                          <button
+                            type="submit"
+                            disabled={!replyText.trim()}
+                            className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
+                              replyText.trim() ? 'bg-[var(--accent)] text-white hover:opacity-90' : 'opacity-45 cursor-not-allowed'
+                            }`}
+                          >
+                            发
+                          </button>
+                        </m.form>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </m.li>
+              )
+            })}
+          </AnimatePresence>
+        </ul>
+      </m.div>
     </section>
   )
 }

@@ -18,7 +18,7 @@ import { collectEgg } from '@/lib/eggs'
 import { getAudioCtx } from '@/lib/sound'
 import { useScroll } from '@/hooks/useScroll'
 
-/* 评论区（giscus+留言 18KB）懒加载，文章首屏不背 */
+/* 评论区懒加载（自建 API + 表单），文章首屏不背这份代码 */
 const Comments = dynamic(() => import('./Comments').then((mod) => mod.Comments), {
   ssr: false,
   loading: () => (

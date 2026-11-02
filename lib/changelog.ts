@@ -10,6 +10,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-11-02',
+    title: '评论区更简单了：留言时可以署上自己的名字',
+    items: [
+      '「GitHub 讨论」页签撤下了——只留一个评论区，少一次选择，少一份配置',
+      '留言现在会显示你的昵称：想叫什么自己起，留空就还是匿名',
+      '起过的名字会被记住，下次来不用再填',
+      '头像还是跟着名字走——改个名字，头衔小兽也会跟着换',
+    ],
+  },
+  {
     date: '2026-11-01',
     title: '评论区重做：不用登录就能说，另有一路 GitHub 讨论',
     items: [

@@ -11,12 +11,3 @@ export const SITE = {
   keywords: ['观烬', '余烬', '设计', '前端', 'React', 'Next.js', '博客', '随笔', '小说'],
 }
 
-/* GitHub Discussions 评论（giscus）
-   2026-11-01：仓库名从 guanjin2011 修正为 guanjin2026（原来配错，giscus 从未加载成功）。
-   repoId/categoryId 由 GraphQL API 查证：R_kgDOVeGgZw / Announcements 类目。 */
-export const GISCUS = {
-  repo: 'wuqi7941/guanjin2026',
-  repoId: 'R_kgDOVeGgZw',
-  category: 'Announcements',
-  categoryId: 'DIC_kwDOVeGgZ84DKHo7',
-}
