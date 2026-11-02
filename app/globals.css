@@ -361,6 +361,8 @@ button,
 body {
   animation: page-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
   font-family: var(--serif-body);
+  /* viewport-fit=cover 后页面会延伸进底部安全区，正文垫开 iPhone 横条 */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @keyframes page-in {
@@ -1300,7 +1302,10 @@ html.scrolling .glass-nav {
 }
 
 .prose-custom table {
+  /* 全站目前只有 easing 一篇有表——宽表在手机上会把整页撑出横向滚动，包一层自滚 */
+  display: block;
   width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   margin: 2rem 0;
   font-size: 0.9375rem;
@@ -1746,6 +1751,14 @@ body {
   .mp-bar {
     bottom: calc(0.6rem + env(safe-area-inset-bottom));
     width: calc(100vw - 1.25rem);
+  }
+  /* 入口小球（播放条出现前的状态）也要让开 iPhone 底部横条 */
+  .mplayer {
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+  /* 手机端播放面板是全屏的，控件别贴到横条上 */
+  .mp-panel {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 

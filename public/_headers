@@ -23,6 +23,10 @@
 /og/*
   Cache-Control: public, max-age=604800
 
+# 首屏大图：文件名无哈希但内容极少变，给一周；改图后可手动清缓存
+/hero-photo.webp
+  Cache-Control: public, max-age=604800
+
 # 搜索索引 / 每日句：一小时（内容随构建更新）
 /search-index.json
   Cache-Control: public, max-age=3600

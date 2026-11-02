@@ -297,30 +297,54 @@ export function PostContent({ post, prev, next, num }: PostContentProps) {
         </m.header>
 
         {toc.length > 1 && (
-          <m.nav
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.1, ease: EASE }}
-            className="mb-12 p-6 sm:p-7 rounded-2xl card-static max-w-[720px] mx-auto"
-            aria-label="文章目录"
-          >
-            <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.2em] text-[var(--ink-subtle)] mb-4">
-              <ListTree className="w-3.5 h-3.5" />
-              目录
-            </div>
-            <ul className="space-y-2 border-l border-[var(--hairline)]">
-              {toc.map((item) => (
-                <li key={item.id} style={{ paddingLeft: item.level === 3 ? '1.75rem' : '1rem' }}>
-                  <a
-                    href={`#${item.id}`}
-                    className="text-sm leading-relaxed text-[var(--ink-muted)] hover:text-[var(--accent)] transition-colors"
-                  >
-                    {item.text}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </m.nav>
+          /* 长目录（8 节以上）默认折叠：手机上滚过三十节标题才能看到正文，太亏 */
+          toc.length > 8 ? (
+            <details className="mb-12 p-6 sm:p-7 rounded-2xl card-static max-w-[720px] mx-auto group">
+              <summary className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.2em] text-[var(--ink-subtle)] cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
+                <ListTree className="w-3.5 h-3.5" />
+                目录 · 共 {toc.length} 节
+                <span className="ml-auto text-[10px] group-open:hidden">展开</span>
+                <span className="ml-auto hidden text-[10px] group-open:inline">收起</span>
+              </summary>
+              <ul className="mt-5 space-y-2 border-l border-[var(--hairline)]">
+                {toc.map((item) => (
+                  <li key={item.id} style={{ paddingLeft: item.level === 3 ? '1.75rem' : '1rem' }}>
+                    <a
+                      href={`#${item.id}`}
+                      className="text-sm leading-relaxed text-[var(--ink-muted)] hover:text-[var(--accent)] transition-colors"
+                    >
+                      {item.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : (
+            <m.nav
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1, ease: EASE }}
+              className="mb-12 p-6 sm:p-7 rounded-2xl card-static max-w-[720px] mx-auto"
+              aria-label="文章目录"
+            >
+              <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.2em] text-[var(--ink-subtle)] mb-4">
+                <ListTree className="w-3.5 h-3.5" />
+                目录
+              </div>
+              <ul className="space-y-2 border-l border-[var(--hairline)]">
+                {toc.map((item) => (
+                  <li key={item.id} style={{ paddingLeft: item.level === 3 ? '1.75rem' : '1rem' }}>
+                    <a
+                      href={`#${item.id}`}
+                      className="text-sm leading-relaxed text-[var(--ink-muted)] hover:text-[var(--accent)] transition-colors"
+                    >
+                      {item.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </m.nav>
+          )
         )}
 
         {/* 打印时的页眉：像手稿那样先写标题、日期、署名 */}

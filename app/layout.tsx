@@ -58,6 +58,8 @@ export const viewport: Viewport = {
   colorScheme: 'light dark',
   width: 'device-width',
   initialScale: 1,
+  /* 没有 cover，下面那些 env(safe-area-inset-*) 恒为 0——iPhone 底部横条会遮住播放条 */
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({

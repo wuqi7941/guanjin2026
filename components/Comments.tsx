@@ -264,7 +264,7 @@ export function Comments({ slug }: { slug: string }) {
       )}
 
       <m.div {...anim}>
-        <div className="rounded-2xl card-static p-5 sm:p-6">
+        <div className="rounded-2xl card-static p-5 sm:p-6 min-h-[180px]">
           <form
             onSubmit={(e) => {
               e.preventDefault()
@@ -283,7 +283,8 @@ export function Comments({ slug }: { slug: string }) {
                 maxLength={NAME_MAX}
                 placeholder="留空就叫匿名"
                 autoComplete="nickname"
-                className="w-40 px-3.5 py-2 rounded-xl text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
+                /* 手机端 16px：更小的字号会让 iOS 聚焦时自动放大页面 */
+                className="w-40 px-3.5 py-2 rounded-xl text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
               />
               <span className="text-[11px] text-[var(--ink-tertiary)]">
                 头像跟着名字走 · {name.trim() ? `${name.trim().slice(0, NAME_MAX)} 的${avatarOf(name).emoji}` : '匿名'}
@@ -296,10 +297,17 @@ export function Comments({ slug }: { slug: string }) {
               id={`cmt-text-${slug}`}
               value={text}
               onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                /* 桌面：Ctrl/Cmd+Enter 直接发送 */
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  e.preventDefault()
+                  publish()
+                }
+              }}
               rows={3}
               maxLength={500}
-              placeholder="写点什么… 别太客气。"
-              className="px-3.5 py-3 rounded-xl text-sm leading-relaxed bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none resize-y transition-colors duration-200 focus:border-[var(--accent)]"
+              placeholder="写点什么… 别太客气。（Ctrl+Enter 发送）"
+              className="px-3.5 py-3 rounded-xl text-[16px] sm:text-sm leading-relaxed bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none resize-y transition-colors duration-200 focus:border-[var(--accent)]"
             />
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-mono text-[var(--ink-subtle)]">
@@ -308,11 +316,11 @@ export function Comments({ slug }: { slug: string }) {
               <button
                 type="submit"
                 disabled={sending || !text.trim()}
-                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                  sending || !text.trim()
-                    ? 'opacity-45 cursor-not-allowed'
-                    : 'bg-[var(--accent)] text-white hover:opacity-90'
-                }`}
+                    className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-200 active:scale-[0.97] ${
+                      sending || !text.trim()
+                        ? 'opacity-45 cursor-not-allowed'
+                        : 'bg-[var(--accent)] text-white hover:opacity-90'
+                    }`}
               >
                 {sending ? (
                   <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
@@ -350,23 +358,36 @@ export function Comments({ slug }: { slug: string }) {
                   >
                     {av.emoji}
                   </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="rounded-xl rounded-tl-[4px] card-static px-4 py-3">
-                      <div className="flex items-center gap-3 mb-1.5">
-                        <span className="text-[13px] font-medium text-[var(--ink)] truncate max-w-[10rem]">{c.n}</span>
-                        <time dateTime={new Date(c.d).toISOString()} className="text-[11px] font-mono text-[var(--ink-tertiary)]">
-                          {timeAgo(c.d)}
-                        </time>
-                        <span className="flex-1" />
-                        <button
-                          type="button"
-                          onClick={() => replyTo(c.d)}
-                          aria-label="回复这条留言"
-                          className="flex items-center gap-1 text-[11px] font-mono text-[var(--ink-subtle)] hover:text-[var(--accent)] transition-colors duration-200"
-                        >
-                          <CornerUpLeft className="w-3 h-3" aria-hidden />
-                          回复
-                        </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="rounded-xl rounded-tl-[4px] card-static px-4 py-3">
+                          <div className="flex items-center gap-3 mb-1.5">
+                            <span className="text-[13px] font-medium text-[var(--ink)] truncate max-w-[10rem]">{c.n}</span>
+                            {/* 悬停显示完整日期；自己的留言带「你」标 */}
+                            <time
+                              dateTime={new Date(c.d).toISOString()}
+                              title={new Date(c.d).toLocaleString('zh-CN')}
+                              className="text-[11px] font-mono text-[var(--ink-tertiary)]"
+                            >
+                              {timeAgo(c.d)}
+                            </time>
+                            {ownSecret(c) && (
+                              <span
+                                aria-hidden
+                                className="px-1.5 py-px rounded text-[10px] font-mono leading-relaxed bg-[var(--accent-soft)] text-[var(--accent)]"
+                              >
+                                你
+                              </span>
+                            )}
+                            <span className="flex-1" />
+                            <button
+                              type="button"
+                              onClick={() => replyTo(c.d)}
+                              aria-label="回复这条留言"
+                              className="-my-1 px-1.5 py-1.5 flex items-center gap-1 text-[11px] font-mono text-[var(--ink-subtle)] hover:text-[var(--accent)] transition-colors duration-200"
+                            >
+                              <CornerUpLeft className="w-3 h-3" aria-hidden />
+                              回复
+                            </button>
                         {/* 只给自己的留言显示删除（凭发评时领到的 secret） */}
                         {!ownSecret(c) ? null : confirmDel === c.d ? (
                           <span className="flex items-center gap-2" role="group" aria-label="确认删除">
@@ -457,9 +478,15 @@ export function Comments({ slug }: { slug: string }) {
                             id={`cmt-reply-${c.d}`}
                             value={replyText}
                             onChange={(e) => setReplyText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                                e.preventDefault()
+                                submitReply(c.d)
+                              }
+                            }}
                             maxLength={200}
                             placeholder="回复…"
-                            className="flex-1 min-w-0 px-3 py-2 rounded-lg text-[13px] bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
+                            className="flex-1 min-w-0 px-3 py-2 rounded-lg text-[16px] sm:text-[13px] bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
                           />
                           <button
                             type="submit"
