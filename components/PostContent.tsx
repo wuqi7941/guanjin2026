@@ -297,8 +297,9 @@ export function PostContent({ post, prev, next, num }: PostContentProps) {
         </m.header>
 
         {toc.length > 1 && (
-          /* 长目录（8 节以上）默认折叠：手机上滚过三十节标题才能看到正文，太亏 */
-          toc.length > 8 ? (
+          /* 长目录（7 节以上，全站 soul-17=8 节、piano-06=7 节）默认折叠：
+             手机上先滚过七八节标题才见正文，太亏。阈值对齐过全站实际分布。 */
+          toc.length > 6 ? (
             <details className="mb-12 p-6 sm:p-7 rounded-2xl card-static max-w-[720px] mx-auto group">
               <summary className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.2em] text-[var(--ink-subtle)] cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
                 <ListTree className="w-3.5 h-3.5" />
