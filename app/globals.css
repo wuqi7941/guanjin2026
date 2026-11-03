@@ -732,8 +732,6 @@ html.scrolling .card-static {
   border-bottom: 1px solid rgba(54, 42, 30, 0.16);
   backdrop-filter: blur(14px) saturate(150%);
   -webkit-backdrop-filter: blur(14px) saturate(150%);
-  /* 封装成 PWA（standalone）后 iOS 状态栏浮在页面顶上，不垫这个菜单就被压进刘海 */
-  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .dark .glass-nav {
@@ -750,6 +748,14 @@ html.scrolling .card-static {
     background: color-mix(in srgb, var(--canvas) 72%, transparent);
     border-bottom: 1px solid var(--hairline);
   }
+}
+
+/* 顶部安全区垫高：只给最外层 fixed 导航容器用。
+   之前垫在 .glass-nav 上——移动菜单展开层同用此类，出现双重垫高 +
+   height:0→auto 动画期间 padding 不被压缩，展开先跳空条、收起残留一条，
+   就是「打开菜单位移变化」的根因。 */
+.nav-safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 /* 滚动中：backdrop-filter 每帧重采样是卡顿大头，切为更高不透明实底 */
@@ -1102,6 +1108,18 @@ html.scrolling .glass-nav {
 }
 
 .prose-custom p { margin: 0 0 1.5rem; }
+
+/* 编辑轨的落日首字：每篇正文第一段的第一个字放大占行，
+   像杂志开篇——纸墨风里最有「出版物」气质的一个信号 */
+.prose-custom > p:first-of-type::first-letter {
+  float: left;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 3.4em;
+  line-height: 0.82;
+  padding: 0.06em 0.14em 0 0;
+  color: var(--ink);
+}
 
 /* 中文段首缩进两格；首段已有首字下沉+乐谱装饰，不缩进 */
 .prose-custom > p { text-indent: 2em; }
