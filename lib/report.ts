@@ -168,10 +168,18 @@ export function drawReport(d: ReportData): string {
 }
 
 export function downloadReport(d: ReportData, filename: string) {
-  const url = drawReport(d)
-  if (!url) return
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
+  if (typeof document === 'undefined') return
+  try {
+    const url = drawReport(d)
+    if (!url) {
+      window.alert('当前浏览器不支持图片导出，试试系统浏览器打开本页')
+      return
+    }
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+  } catch {
+    window.alert('导出失败——试试系统浏览器（Safari / Chrome）打开本页再导出')
+  }
 }

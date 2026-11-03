@@ -288,8 +288,13 @@ export function PlayHub() {
               返回
             </button>
             <h2 className="text-2xl font-semibold tracking-[-0.01em] text-[var(--ink)] mb-2">八字 · 日柱与时柱</h2>
-            <p className="text-sm text-[var(--ink-subtle)] mb-8 max-w-[50ch]">
+            <p className="text-sm text-[var(--ink-subtle)] mb-3 max-w-[50ch]">
               输入公历出生日期（1990 年至今）；知道出生时辰的话一起选上，时柱用五鼠遁推算。
+            </p>
+            <p className="text-xs leading-relaxed text-[var(--ink-tertiary)] mb-8 max-w-[52ch]">
+              本页按北京时间（UTC+8）计算。命理师常用「真太阳时」（出生地经度修正，
+              可能比北京时间早或晚半小时以上）——若和大师排的不一致，多半差在这里：
+              把大师给的时辰换算回北京时间再选即可。
             </p>
             <div className="flex flex-col gap-4">
               <label htmlFor="pillar-date" className="text-[11px] font-mono text-[var(--ink-tertiary)]">
@@ -504,32 +509,8 @@ export function PlayHub() {
               </div>
             )}
 
-            <p className="mt-7 text-sm sm:text-[15px] leading-[1.95] text-[var(--ink-muted)] max-w-[46ch] mx-auto text-left">
-              {result.text}
-            </p>
-
-            {test === 'daypillar' && bazi && (
-              <p className="mt-4 text-sm sm:text-[15px] leading-[1.95] text-[var(--ink-muted)] max-w-[46ch] mx-auto text-left">
-                <span className="text-[var(--accent)]">五行偏「{bazi.wuxingTop}」——</span>
-                {WUXING_RESULTS[WUXING_CN_TO_KEY[bazi.wuxingTop] as keyof typeof WUXING_RESULTS].text}
-              </p>
-            )}
-
-            {result.ember && (
-              <p className="mt-6 font-display italic text-[var(--accent)] text-base">「{result.ember}」</p>
-            )}
-
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-              {test !== 'daypillar' && (
-                <button
-                  type="button"
-                  onClick={() => start(test, tier)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[var(--hairline-strong)] text-sm text-[var(--ink-muted)] hover:text-[var(--ink)] hover:border-[var(--ink-subtle)] transition-colors"
-                >
-                  <RotateCcw className="w-4 h-4" aria-hidden />
-                  再测一次
-                </button>
-              )}
+            {/* 主操作行：导出报告图 + 复制结果（APP 窄屏下也最先看到） */}
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={() =>
@@ -555,18 +536,58 @@ export function PlayHub() {
                     `embers-${test}-${result.code}.png`,
                   )
                 }
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[var(--accent)] text-[var(--accent)] text-sm hover:bg-[var(--accent-soft)] transition-colors active:scale-[0.97]"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity active:scale-[0.97]"
               >
                 导出报告图
               </button>
               <button
                 type="button"
                 onClick={copyResult}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--accent)] text-white text-sm hover:opacity-90 transition-opacity active:scale-[0.97]"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[var(--hairline-strong)] text-sm text-[var(--ink-muted)] hover:text-[var(--ink)] hover:border-[var(--ink-subtle)] transition-colors"
               >
                 {copied ? <Check className="w-4 h-4" aria-hidden /> : <Copy className="w-4 h-4" aria-hidden />}
-                {copied ? '已复制' : '复制结果'}
+                {copied ? '已复制' : '复制文字'}
               </button>
+            </div>
+
+            <p className="mt-7 text-sm sm:text-[15px] leading-[1.95] text-[var(--ink-muted)] max-w-[46ch] mx-auto text-left">
+              {result.text}
+            </p>
+
+            {test === 'daypillar' && bazi && (
+              <p className="mt-4 text-sm sm:text-[15px] leading-[1.95] text-[var(--ink-muted)] max-w-[46ch] mx-auto text-left">
+                <span className="text-[var(--accent)]">五行偏「{bazi.wuxingTop}」——</span>
+                {WUXING_RESULTS[WUXING_CN_TO_KEY[bazi.wuxingTop] as keyof typeof WUXING_RESULTS].text}
+              </p>
+            )}
+
+            {result.ember && (
+              <p className="mt-6 font-display italic text-[var(--accent)] text-base">「{result.ember}」</p>
+            )}
+
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+              {test !== 'daypillar' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep(answers.filter((a) => a !== undefined).length - 1)
+                      setView('quiz')
+                    }}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[var(--hairline-strong)] text-sm text-[var(--ink-muted)] hover:text-[var(--ink)] hover:border-[var(--ink-subtle)] transition-colors"
+                  >
+                    修改答案
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => start(test, tier)}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[var(--hairline-strong)] text-sm text-[var(--ink-muted)] hover:text-[var(--ink)] hover:border-[var(--ink-subtle)] transition-colors"
+                  >
+                    <RotateCcw className="w-4 h-4" aria-hidden />
+                    再测一次
+                  </button>
+                </>
+              )}
             </div>
             <button
               type="button"
