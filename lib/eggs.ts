@@ -34,6 +34,7 @@ export type EggKey =
   | 'themeflip'
   | 'flip'
   | 'search3'
+  | 'chatter'
 
 export interface EggMeta {
   key: EggKey
@@ -294,6 +295,14 @@ export const EGGS: EggMeta[] = [
     where: '搜索框',
     how: '一分钟内连续搜索三次',
     effect: '点亮',
+  },
+  {
+    key: 'chatter',
+    label: '常客',
+    hint: '在火堆旁说过五次话',
+    where: '任意文章的评论区',
+    how: '累计发布五条留言（或回复）',
+    effect: '点亮——火认得你的声音',
   },
 ]
 

@@ -4561,3 +4561,42 @@ li:focus-within > .egg-hint {
     filter: blur(28px);
   }
 }
+
+/* ============ 评论区：纸龄与火堆 ============ */
+
+/* 评论气泡的纸龄：--paper-age 由组件按评论年龄算（0 新 → 1 旧，540 天封顶），
+   和文章卡同一套「纸会变旧」的世界观——老评论自然泛黄，新评论是白纸 */
+.cmt-paper {
+  position: relative;
+}
+
+.cmt-paper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(170deg, rgba(201, 168, 106, 0.18), rgba(160, 120, 80, 0.12));
+  opacity: calc(var(--paper-age, 0) * 0.85);
+}
+
+/* 评论区火堆：评论越多火越旺（level 0 灰烬 → 3 旺火），火苗轻微摇曳 */
+.cmt-fire {
+  transform-origin: 50% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cmt-fire.is-burning {
+    animation: fire-sway 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes fire-sway {
+  0%,
+  100% {
+    transform: rotate(-2deg) scaleY(1);
+  }
+  50% {
+    transform: rotate(2deg) scaleY(1.06);
+  }
+}

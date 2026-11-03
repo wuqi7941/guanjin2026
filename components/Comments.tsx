@@ -5,9 +5,11 @@
    （2026-11-02：giscus 分支整体移除，改用单一评论区。） */
 
 import { EASE } from '@/lib/motion'
+import { chime } from '@/lib/sound'
+import { bumpCounter, collectEgg } from '@/lib/eggs'
 import { useEffect, useRef, useState } from 'react'
 import { m, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { CornerUpLeft, Loader2, MessageCircle, Send, Trash2 } from 'lucide-react'
+import { CornerUpLeft, Loader2, Send, Trash2 } from 'lucide-react'
 
 interface Reply {
   n: string
@@ -78,6 +80,47 @@ function timeAgo(ts: number): string {
 }
 
 const emptyState = '还没有人说话。你是第一个。'
+
+/* 评论区火堆：评论越多火越旺。level 0 灰烬（空）→ 1 小火 → 2 中火 → 3 旺火 */
+function Bonfire({ level }: { level: 0 | 1 | 2 | 3 }) {
+  const flameColor =
+    level === 0 ? 'var(--ink-tertiary)' : level === 1 ? 'var(--ember)' : 'var(--accent)'
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={`cmt-fire w-6 h-6 ${level >= 2 ? 'is-burning' : ''}`}
+      style={{ opacity: level === 0 ? 0.5 : 1 }}
+      aria-hidden
+    >
+      {/* 外焰 */}
+      <path
+        d="M12 2.4c1.2 2.6 4.9 4.6 4.9 9.2 0 3.4-2.2 5.9-4.9 5.9s-4.9-2.5-4.9-5.9c0-3 1.6-4.6 2.6-6.3.4 1.1.9 1.7 1.7 2.3.3-1.9-.2-3.6.6-5.2z"
+        fill={flameColor}
+      />
+      {/* 内焰：火势够大才亮 */}
+      {level >= 2 && (
+        <path
+          d="M12 10.2c.7 1.4 1.9 2.3 1.9 4.1 0 1.6-1 2.7-1.9 2.7s-1.9-1.1-1.9-2.7c0-1.5.9-2.3 1.2-3.4.2.5.4.8.7 1.1z"
+          fill="#ffd9a0"
+        />
+      )}
+    </svg>
+  )
+}
+
+/* 评论纸龄：0 新 → 1 旧，540 天封顶 0.65——老评论自然泛黄 */
+function paperAgeOf(d: number): number {
+  return Math.min(0.65, Math.max(0, (Date.now() - d) / 86400000 / 540)) as number
+}
+
+/* 发言计数彩蛋：累计 5 条点亮「常客」暗语（本地计数，跨文章累计） */
+function noteChatter() {
+  try {
+    if (bumpCounter('cmt', 5) >= 5) collectEgg('chatter')
+  } catch {
+    /* ignore */
+  }
+}
 
 export function Comments({ slug }: { slug: string }) {
   const reduce = !!useReducedMotion()
@@ -213,6 +256,8 @@ export function Comments({ slug }: { slug: string }) {
         } catch {
           /* ignore */
         }
+        chime()
+        noteChatter()
         setItems((prev) => [{ n: j.name, t: j.body, d: j.createdAt, r: [], id: j.id, avatar: j.avatar }, ...prev])
         setText('')
         setSent(true)
@@ -258,6 +303,8 @@ export function Comments({ slug }: { slug: string }) {
           return
         }
         rememberSecret(j.id, j.secret)
+        chime()
+        noteChatter()
         setItems((prev) =>
           prev.map((c) =>
             c.d === d ? { ...c, r: [...c.r, { n: j.name, t: j.body, d: j.createdAt, avatar: j.avatar }] } : c,
@@ -298,8 +345,13 @@ export function Comments({ slug }: { slug: string }) {
     <section aria-label="评论区" className="mt-16 pt-10 border-t border-dashed border-[var(--hairline)]">
       <header className="mb-6">
         <h2 className="flex items-center gap-2.5 text-2xl sm:text-3xl font-semibold tracking-[-0.02em] text-[var(--ink)]">
-          <MessageCircle className="w-6 h-6 text-[var(--accent)]" aria-hidden />
+          <Bonfire level={items.length === 0 ? 0 : items.length < 10 ? 1 : items.length < 50 ? 2 : 3} />
           评论区
+          {items.length > 0 && (
+            <span className="text-xs font-mono font-normal text-[var(--ink-tertiary)]" title="留言越多，火越旺">
+              · {items.length}
+            </span>
+          )}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-[var(--ink-subtle)] max-w-[52ch]">
           不是留言板，是火堆旁。留个名字，或者不留——观烬会回。
@@ -455,8 +507,11 @@ export function Comments({ slug }: { slug: string }) {
                   >
                     {av.emoji}
                   </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="rounded-xl rounded-tl-[4px] card-static px-4 py-3">
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className="cmt-paper rounded-xl rounded-tl-[4px] card-static px-4 py-3"
+                      style={{ ['--paper-age' as string]: paperAgeOf(c.d).toFixed(3) }}
+                    >
                           <div className="flex items-center gap-3 mb-1.5">
                             <span className="text-[13px] font-medium text-[var(--ink)] truncate max-w-[10rem]">{c.n}</span>
                             {/* 悬停显示完整日期；自己的留言带「你」标 */}
