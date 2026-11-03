@@ -15,10 +15,13 @@ import {
   FIRE_RESULTS,
   WUXING_QUESTIONS,
   WUXING_RESULTS,
+  WUXING_CN_TO_KEY,
   dayPillar,
   GAN_META,
   BRANCH_HOURS,
   hourPillar,
+  fullBazi,
+  type FullBazi,
   type MbtiTier,
   type FireKind,
   type WuxingKind,
@@ -51,6 +54,7 @@ export function PlayHub() {
   const [birth, setBirth] = useState('')
   const [hourIdx, setHourIdx] = useState(-1)
   const [hourText, setHourText] = useState('')
+  const [bazi, setBazi] = useState<FullBazi | null>(null)
   const [today] = useState(() => new Date().toISOString().slice(0, 10))
   const [pillar, setPillar] = useState<UnifiedResult | null>(null)
 
@@ -128,6 +132,7 @@ export function PlayHub() {
       }
     }
     setHourText(hText)
+    setBazi(fullBazi(birth, hourIdx))
     setPillar({
       code,
       name: `${meta.yinYang} · ${meta.wuxing}`,
@@ -406,6 +411,86 @@ export function PlayHub() {
               {result.name} · {result.sub}
             </p>
 
+            {/* 八字完整报告：四柱 + 五行分布 + 流年 + 梅花 */}
+            {test === 'daypillar' && bazi && (
+              <div className="mt-8 text-left max-w-md mx-auto w-full">
+                <div className="grid grid-cols-4 gap-2 mb-6">
+                  {([['年柱', bazi.pillars.year], ['月柱', bazi.pillars.month], ['日柱', bazi.pillars.day], ['时柱', bazi.pillars.hour]] as const).map(
+                    ([label, pz]) => (
+                      <div key={label} className="card-static rounded-xl py-3 text-center">
+                        <div className="text-[10px] font-mono text-[var(--ink-tertiary)] mb-1">{label}</div>
+                        <div className="font-display text-2xl font-semibold text-[var(--ink)] leading-tight">
+                          {pz ? pz.gan : '—'}
+                          <br />
+                          {pz ? pz.zhi : '—'}
+                        </div>
+                      </div>
+                    ),
+                  )}
+                </div>
+
+                <p className="text-[11px] font-mono text-[var(--ink-tertiary)] mb-2">五行分布 · 偏 {bazi.wuxingTop}</p>
+                <div className="flex flex-col gap-1.5 mb-6">
+                  {Object.entries(bazi.wuxingCount).map(([wx, n]) => (
+                    <div key={wx} className="flex items-center gap-2">
+                      <span className="w-5 text-sm font-display text-[var(--ink-muted)]">{wx}</span>
+                      <div className="flex-1 h-2 bg-[var(--surface-2)] rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-[var(--accent)] opacity-80"
+                          style={{ width: `${(n / 8) * 100}%` }}
+                        />
+                      </div>
+                      <span className="w-4 text-right text-xs font-mono text-[var(--ink-tertiary)]">{n}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-[11px] font-mono text-[var(--ink-tertiary)] mb-2">流年（以日主为基准）</p>
+                <div className="flex flex-col gap-1 mb-6">
+                  {bazi.liunian.map((ln) => (
+                    <div key={ln.year} className="flex items-center gap-3 text-sm">
+                      <span className="font-mono text-xs text-[var(--ink-tertiary)] w-10 tabular-nums">{ln.year}</span>
+                      <span className="font-display text-[var(--ink)] w-10">{ln.ganZhi}</span>
+                      <span
+                        className={`text-xs ${
+                          ln.tone === 'good'
+                            ? 'text-[var(--fire-top)]'
+                            : ln.tone === 'watch'
+                              ? 'text-[var(--ink-tertiary)]'
+                              : 'text-[var(--ink-muted)]'
+                        }`}
+                      >
+                        {ln.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {bazi.meihua && (
+                  <div className="card-static rounded-xl p-4 mb-2">
+                    <p className="text-[11px] font-mono text-[var(--ink-tertiary)] mb-2">
+                      梅花易数 · 时间起卦（趣味参考）
+                    </p>
+                    <p className="font-display text-lg text-[var(--ink)]">
+                      上{bazi.meihua.upper} 下{bazi.meihua.lower} · 动爻{bazi.meihua.moving}
+                    </p>
+                    <p
+                      className={`mt-1 text-sm ${
+                        bazi.meihua.tone === 'good' ? 'text-[var(--fire-top)]' : 'text-[var(--ink-muted)]'
+                      }`}
+                    >
+                      {bazi.meihua.verdict}
+                    </p>
+                  </div>
+                )}
+
+                <p className="text-[11px] leading-relaxed text-[var(--ink-tertiary)] mt-4">
+                  年柱月柱的节气分界按平均日期近似（边界生日可能差一日）；日柱时柱精确。
+                  排盘为趣味参考，不做真断命——命是自己写的，八字只是纸。
+                </p>
+              </div>
+            )}
+
             {result.tags.length > 0 && (
               <div className="mt-5 flex flex-wrap justify-center gap-2">
                 {result.tags.map((tag) => (
@@ -422,6 +507,13 @@ export function PlayHub() {
             <p className="mt-7 text-sm sm:text-[15px] leading-[1.95] text-[var(--ink-muted)] max-w-[46ch] mx-auto text-left">
               {result.text}
             </p>
+
+            {test === 'daypillar' && bazi && (
+              <p className="mt-4 text-sm sm:text-[15px] leading-[1.95] text-[var(--ink-muted)] max-w-[46ch] mx-auto text-left">
+                <span className="text-[var(--accent)]">五行偏「{bazi.wuxingTop}」——</span>
+                {WUXING_RESULTS[WUXING_CN_TO_KEY[bazi.wuxingTop] as keyof typeof WUXING_RESULTS].text}
+              </p>
+            )}
 
             {result.ember && (
               <p className="mt-6 font-display italic text-[var(--accent)] text-base">「{result.ember}」</p>
@@ -443,13 +535,22 @@ export function PlayHub() {
                 onClick={() =>
                   downloadReport(
                     {
-                      kicker: test === 'mbti' ? 'MBTI' : test === 'wuxing' ? '五行问' : test === 'daypillar' ? '八字 · 日柱' : '你是哪种火',
+                      kicker: test === 'mbti' ? 'MBTI' : test === 'wuxing' ? '五行问' : test === 'daypillar' ? '八字 · 四柱' : '你是哪种火',
                       code: result.code,
                       name: result.name,
                       sub: result.sub,
                       tags: result.tags,
                       text: result.text,
                       ember: result.ember,
+                      pillars:
+                        test === 'daypillar' && bazi
+                          ? [
+                              `${bazi.pillars.year.gan}${bazi.pillars.year.zhi}`,
+                              `${bazi.pillars.month.gan}${bazi.pillars.month.zhi}`,
+                              `${bazi.pillars.day.gan}${bazi.pillars.day.zhi}`,
+                              bazi.pillars.hour ? `${bazi.pillars.hour.gan}${bazi.pillars.hour.zhi}` : '——',
+                            ]
+                          : undefined,
                     },
                     `embers-${test}-${result.code}.png`,
                   )

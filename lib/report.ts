@@ -9,6 +9,8 @@ export interface ReportData {
   tags: string[]
   text: string
   ember: string
+  /* 八字报告：四柱（干支各一串，如「丙午」） */
+  pillars?: string[]
 }
 
 const SERIF = '"Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", Georgia, serif'
@@ -88,9 +90,31 @@ export function drawReport(d: ReportData): string {
   ctx.lineTo(W - 96, 580)
   ctx.stroke()
 
+  /* 八字四柱行（可选）：年/月/日/时 四格 */
+  if (d.pillars && d.pillars.length === 4) {
+    const labels = ['年', '月', '日', '时']
+    const cellW = 150
+    const gap = 24
+    const startX = (W - (cellW * 4 + gap * 3)) / 2
+    for (let i = 0; i < 4; i++) {
+      const x = startX + i * (cellW + gap)
+      ctx.strokeStyle = 'rgba(54, 42, 30, 0.3)'
+      ctx.strokeRect(x, 616, cellW, 150)
+      ctx.fillStyle = 'rgba(54, 42, 30, 0.45)'
+      ctx.font = `500 20px ${MONO}`
+      ctx.textAlign = 'center'
+      ctx.fillText(labels[i], x + cellW / 2, 648)
+      ctx.fillStyle = '#221b13'
+      ctx.font = `600 56px ${SERIF}`
+      const pz = d.pillars[i]
+      ctx.fillText(pz[0], x + cellW / 2, 706)
+      ctx.fillText(pz[1] ?? '', x + cellW / 2, 754)
+    }
+  }
+
   /* 特质标签（胶囊） */
   let tagX = 96
-  const tagY = 636
+  const tagY = (d.pillars?.length === 4 ? 902 : 636)
   for (const tag of d.tags.slice(0, 4)) {
     ctx.font = `500 26px ${SERIF}`
     const w = ctx.measureText(tag).width + 44
@@ -109,7 +133,7 @@ export function drawReport(d: ReportData): string {
   ctx.textAlign = 'left'
   ctx.textBaseline = 'alphabetic'
   const lines = wrapText(ctx, d.text, W - 192)
-  let y = 736
+  let y = d.pillars?.length === 4 ? 996 : 736
   for (const line of lines.slice(0, 8)) {
     ctx.fillText(line, 96, y)
     y += 62

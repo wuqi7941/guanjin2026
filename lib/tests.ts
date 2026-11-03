@@ -778,3 +778,184 @@ export function hourPillar(dayGan: string, hour: number): { gan: string; zhi: st
   const ganIdx = ((dayGanIdx % 5) * 2 + zhiIdx) % 10
   return { gan: GAN[ganIdx], zhi: ZHI[zhiIdx] }
 }
+
+/* ============ 完整四柱排盘（近似节气版）+ 流年 + 梅花时间起卦 ============ */
+/* 说明：日柱、时柱是精确的；年柱月柱的节气分界用平均日期（±1 天误差），
+   对绝大多数生日够用。趣味排盘，不做吉凶断命。 */
+
+export const GAN_WUXING: Record<string, string> = {
+  甲: '木', 乙: '木', 丙: '火', 丁: '火', 戊: '土', 己: '土', 庚: '金', 辛: '金', 壬: '水', 癸: '水',
+}
+export const ZHI_WUXING: Record<string, string> = {
+  子: '水', 丑: '土', 寅: '木', 卯: '木', 辰: '土', 巳: '火', 午: '火', 未: '土', 申: '金', 酉: '金', 戌: '土', 亥: '水',
+}
+const ZHI_ORDER = '子丑寅卯辰巳午未申酉戌亥'
+
+/* 月柱节气分界（平均日期）：[月, 日, 月支序（寅=2）] */
+const JIEQI_SPLIT: Array<[number, number, number]> = [
+  [1, 6, 1],   /* 小寒 → 丑 */
+  [2, 4, 2],   /* 立春 → 寅 */
+  [3, 6, 3],   /* 惊蛰 → 卯 */
+  [4, 5, 4],   /* 清明 → 辰 */
+  [5, 6, 5],   /* 立夏 → 巳 */
+  [6, 6, 6],   /* 芒种 → 午 */
+  [7, 7, 7],   /* 小暑 → 未 */
+  [8, 8, 8],   /* 立秋 → 申 */
+  [9, 8, 9],   /* 白露 → 酉 */
+  [10, 8, 10], /* 寒露 → 戌 */
+  [11, 7, 11], /* 立冬 → 亥 */
+  [12, 7, 0],  /* 大雪 → 子 */
+]
+
+function yearGanZhi(year: number): { gan: string; zhi: string } {
+  return { gan: GAN[(((year - 4) % 10) + 10) % 10], zhi: ZHI[(((year - 4) % 12) + 12) % 12] }
+}
+
+/* 年柱：立春（约 2/4）前算前一年 */
+function yearPillar(y: number, m: number, d: number): { gan: string; zhi: string; solarYear: number } {
+  const beforeLichun = m < 2 || (m === 2 && d < 4)
+  const sy = beforeLichun ? y - 1 : y
+  return { ...yearGanZhi(sy), solarYear: sy }
+}
+
+/* 月柱：节气近似分界 + 五虎遁（月干序 = 年干序×2 + 月支序，mod 10） */
+function monthPillar(yearGanIdx: number, zhiIdx: number): { gan: string; zhi: string } {
+  const ganIdx = (((yearGanIdx * 2 + zhiIdx) % 10) + 10) % 10
+  return { gan: GAN[ganIdx], zhi: ZHI[zhiIdx] }
+}
+
+function monthZhiIdx(m: number, d: number): number {
+  for (const [mm, dd, z] of JIEQI_SPLIT) {
+    if (m === mm && d >= dd) return z
+  }
+  /* 在本月节气日之前 → 上一个节气月 */
+  const prev = JIEQI_SPLIT.find(([mm]) => mm === m)
+  if (prev && d < prev[1]) {
+    return (prev[2] + 11) % 12
+  }
+  /* 跨年：1 月 6 日前是子月（0） */
+  return m === 1 ? 0 : (m - 2) % 12
+}
+
+/* 流年关系：日主五行 vs 流年干五行 */
+function relation(dayWX: string, yearWX: string): { label: string; tone: 'good' | 'mid' | 'watch' } {
+  const ORDER = ['木', '火', '土', '金', '水'] /* 相生顺序 */
+  const i = ORDER.indexOf(dayWX)
+  const j = ORDER.indexOf(yearWX)
+  const diff = (j - i + 5) % 5
+  if (diff === 0) return { label: '比肩——同气相扶', tone: 'mid' }
+  if (diff === 1) return { label: '我生——泄秀付出', tone: 'watch' }
+  if (diff === 2) return { label: '我克——财星可得', tone: 'good' }
+  if (diff === 3) return { label: '克我——官杀压身', tone: 'watch' }
+  return { label: '生我——印星护体', tone: 'good' }
+}
+
+/* 八卦：先天数 1-8；五行；意象 */
+const TRIGRAMS = [
+  { name: '乾', wx: '金', img: '天 · 刚健' },
+  { name: '兑', wx: '金', img: '泽 · 喜悦' },
+  { name: '离', wx: '火', img: '火 · 光明' },
+  { name: '震', wx: '木', img: '雷 · 震动' },
+  { name: '巽', wx: '木', img: '风 · 顺入' },
+  { name: '坎', wx: '水', img: '水 · 险陷' },
+  { name: '艮', wx: '土', img: '山 · 止守' },
+  { name: '坤', wx: '土', img: '地 · 厚载' },
+]
+
+export interface FullBazi {
+  pillars: {
+    year: { gan: string; zhi: string }
+    month: { gan: string; zhi: string }
+    day: { gan: string; zhi: string }
+    hour: { gan: string; zhi: string } | null
+  }
+  wuxingCount: Record<string, number>
+  wuxingTop: string
+  liunian: Array<{ year: number; ganZhi: string; label: string; tone: 'good' | 'mid' | 'watch' }>
+  meihua: { upper: string; lower: string; moving: number; verdict: string; tone: 'good' | 'mid' | 'watch' } | null
+}
+
+export function fullBazi(iso: string, hourIdx: number): FullBazi | null {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return null
+  const y = Number(m[1])
+  const mo = Number(m[2])
+  const d = Number(m[3])
+  if (y < 1901 || y > 2099) return null
+
+  const yr = yearPillar(y, mo, d)
+  const yearGanIdx = GAN.indexOf(yr.gan)
+  const mZhi = monthZhiIdx(mo, d)
+  const month = monthPillar(yearGanIdx, mZhi)
+
+  const day = dayPillar(iso)
+  if (!day) return null
+
+  const hour = hourIdx >= 0 ? hourPillar(day.gan, BRANCH_HOURS[hourIdx].h) : null
+
+  /* 五行分布：八字（有 时柱 算十字中的八字——四柱天干地支共 8 字，无时柱 6 字） */
+  const chars = [
+    yr.gan, yr.zhi, month.gan, month.zhi, day.gan, day.zhi,
+    ...(hour ? [hour.gan, hour.zhi] : []),
+  ]
+  const wuxingCount: Record<string, number> = { 金: 0, 木: 0, 水: 0, 火: 0, 土: 0 }
+  for (const c of chars) {
+    const wx = GAN_WUXING[c] ?? ZHI_WUXING[c]
+    if (wx) wuxingCount[wx]++
+  }
+  const wuxingTop = (Object.keys(wuxingCount) as string[]).reduce((a, b) => (wuxingCount[b] > wuxingCount[a] ? b : a))
+
+  /* 流年：今年起 8 年 */
+  const nowYear = new Date().getFullYear()
+  const dayWX = GAN_WUXING[day.gan]
+  const liunian: FullBazi['liunian'] = []
+  for (let i = 0; i < 8; i++) {
+    const yy = nowYear + i
+    const gz = yearGanZhi(yy)
+    const rel = relation(dayWX, GAN_WUXING[gz.gan])
+    liunian.push({ year: yy, ganZhi: `${gz.gan}${gz.zhi}`, label: rel.label, tone: rel.tone })
+  }
+
+  /* 梅花易数 · 时间起卦：年支数(1-12) + 月 + 日 → 上卦；加时支数 → 下卦；总和 mod 6 → 动爻 */
+  let meihua: FullBazi['meihua'] = null
+  if (hourIdx >= 0) {
+    const yearZhiNum = (ZHI_ORDER.indexOf(yr.zhi) + 1 + 12) % 12 || 12
+    const hourZhiNum = hourIdx + 1
+    const upperIdx = ((yearZhiNum + mo + d) % 8 + 8) % 8
+    const lowerIdx = ((yearZhiNum + mo + d + hourZhiNum) % 8 + 8) % 8
+    const moving = (((yearZhiNum + mo + d + hourZhiNum) % 6) + 6) % 6 || 6
+    const upper = TRIGRAMS[upperIdx]
+    const lower = TRIGRAMS[lowerIdx]
+    /* 体用：动爻在下卦 → 下卦为用、上卦为体；反之亦然 */
+    const body = moving <= 3 ? upper : lower
+    const use = moving <= 3 ? lower : upper
+    const i2 = ['木', '火', '土', '金', '水'].indexOf(body.wx)
+    const j2 = ['木', '火', '土', '金', '水'].indexOf(use.wx)
+    const diff = (j2 - i2 + 5) % 5
+    let verdict = ''
+    let tone: 'good' | 'mid' | 'watch' = 'mid'
+    if (diff === 4) { verdict = '用生体——大吉，外力来助'; tone = 'good' }
+    else if (diff === 0) { verdict = '体用比和——诸事顺遂'; tone = 'good' }
+    else if (diff === 2) { verdict = '体克用——可为，小费力'; tone = 'good' }
+    else if (diff === 1) { verdict = '体生用——有耗泄，量力而行'; tone = 'watch' }
+    else { verdict = '用克体——有阻滞，宜守不宜进'; tone = 'watch' }
+    meihua = { upper: upper.name, lower: lower.name, moving, verdict, tone }
+  }
+
+  return {
+    pillars: { year: { gan: yr.gan, zhi: yr.zhi }, month, day: { gan: day.gan, zhi: day.zhi }, hour },
+    wuxingCount,
+    wuxingTop,
+    liunian,
+    meihua,
+  }
+}
+
+/* 五行汉字 → kind（日柱报告的五行底色段用） */
+export const WUXING_CN_TO_KEY: Record<string, WuxingKind> = {
+  金: 'metal',
+  木: 'wood',
+  水: 'water',
+  火: 'fire',
+  土: 'earth',
+}
