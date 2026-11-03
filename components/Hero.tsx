@@ -1,7 +1,7 @@
 'use client'
 
 import { EASE, EASE_DROP } from '@/lib/motion'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { m, AnimatePresence, useTransform } from 'framer-motion'
 import { Typewriter } from './Typewriter'
 import { HeroArt } from './HeroArt'
@@ -12,7 +12,19 @@ import { useIdle } from '@/hooks/useIdle'
 import { useParallax } from '@/hooks/useParallax'
 import { collectEgg, isNightNow } from '@/lib/eggs'
 import { chime } from '@/lib/sound'
-import { HERO_TEXTS, IDLE_LINE, NIGHT_TYPE_LINE, TYPE_TRIGGERS, PHASE_TYPE, phaseOf } from '@/lib/copy'
+import {
+  HERO_TEXTS,
+  IDLE_LINE,
+  NIGHT_TYPE_LINE,
+  TYPE_TRIGGERS,
+  PHASE_TYPE,
+  phaseOf,
+  seasonOf,
+  SEASON_TEXTS,
+  SURPRISE_LINES,
+  SOLAR_TERMS,
+  pickRandom,
+} from '@/lib/copy'
 
 export function Hero() {
   const idle = useIdle(15000)
@@ -42,12 +54,21 @@ export function Hero() {
     }
   }, [idle])
 
-  /* 深夜句优先播出（priority 触发即时切换） */
-  const texts = night
-    ? [NIGHT_TYPE_LINE, ...HERO_TEXTS]
-    : phaseLine
-      ? [phaseLine, ...HERO_TEXTS]
-      : HERO_TEXTS
+  /* 深夜句优先；普通时段先报时，再随机插一句季节句；
+     队列尾埋两句「惊喜句」（季节冷知识 / 站内小机关提示）——
+     停留够久就会「时不时跳出来」。进站随机一次，轮播期间不再变。 */
+  const texts = useMemo(() => {
+    const head = night ? [NIGHT_TYPE_LINE] : phaseLine ? [phaseLine] : []
+    const seasonPick = pickRandom(SEASON_TEXTS[seasonOf()], 1)
+    const today = new Date()
+    const todayTerm = SOLAR_TERMS.find((t) => t.m === today.getMonth() + 1 && t.d === today.getDate())
+    const surprisePool = SOLAR_TERMS.filter((t) => !(todayTerm && t.m === todayTerm.m && t.d === todayTerm.d)).map(
+      (t) => t.line,
+    )
+    const surprise = pickRandom([...SURPRISE_LINES, ...surprisePool], 2)
+    return [...head, ...seasonPick, ...HERO_TEXTS, ...surprise]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [night, phaseLine])
 
   /* 打字机触发词命中：收集「火苗」+ 唤一阵叶子雨 */
   const onTypeTrigger = useCallback(() => {
@@ -134,7 +155,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.28, ease: EASE }}
-            className="relative min-h-14 flex items-center text-lg sm:text-xl md:text-2xl text-[var(--ink-muted)] font-light max-w-xl pl-5"
+            className="relative min-h-16 flex items-center text-lg sm:text-xl md:text-2xl text-[var(--ink-muted)] font-light max-w-xl pl-5"
           >
             {/* 毛笔竖线：手绘笔触 + 呼吸 */}
             <svg className="brush-line" viewBox="0 0 3 100" preserveAspectRatio="none" aria-hidden>

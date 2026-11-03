@@ -1110,7 +1110,8 @@ html.scrolling .glass-nav {
 .prose-custom p { margin: 0 0 1.5rem; }
 
 /* 编辑轨的落日首字：每篇正文第一段的第一个字放大占行，
-   像杂志开篇——纸墨风里最有「出版物」气质的一个信号 */
+   像杂志开篇——纸墨风里最有「出版物」气质的一个信号。
+   引号/括号/空格开头的文章由组件加 .no-dropcap 跳过 */
 .prose-custom > p:first-of-type::first-letter {
   float: left;
   font-family: var(--display);
@@ -1119,6 +1120,15 @@ html.scrolling .glass-nav {
   line-height: 0.82;
   padding: 0.06em 0.14em 0 0;
   color: var(--ink);
+}
+
+.no-dropcap > p:first-of-type::first-letter {
+  float: none;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  padding: 0;
+  color: inherit;
 }
 
 /* 中文段首缩进两格；首段已有首字下沉+乐谱装饰，不缩进 */

@@ -155,12 +155,20 @@ export function Comments({ slug }: { slug: string }) {
     return top.reverse()
   }
 
-  /* 加载评论 */
+  /* 加载评论。刚发过评（60s 内）时带 bust 参数绕过边缘缓存，
+     否则 GET 的 30s 缓存会让自己刚发的评论「消失」一轮 */
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setErr('')
-    fetch(`/api/comments?slug=${encodeURIComponent(slug)}`)
+    let bust = 0
+    try {
+      const t = parseInt(sessionStorage.getItem('embers_cmt_bust') || '0', 10)
+      if (t && Date.now() - t < 60_000) bust = Date.now()
+    } catch {
+      /* ignore */
+    }
+    fetch(`/api/comments?slug=${encodeURIComponent(slug)}${bust ? `&bust=${bust}` : ''}`)
       .then((r) => r.json())
       .then((j) => {
         if (cancelled) return
@@ -200,6 +208,11 @@ export function Comments({ slug }: { slug: string }) {
           return
         }
         rememberSecret(j.id, j.secret)
+        try {
+          sessionStorage.setItem('embers_cmt_bust', String(Date.now()))
+        } catch {
+          /* ignore */
+        }
         setItems((prev) => [{ n: j.name, t: j.body, d: j.createdAt, r: [], id: j.id, avatar: j.avatar }, ...prev])
         setText('')
         setSent(true)

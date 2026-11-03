@@ -1,11 +1,15 @@
 /* 全站文案集中：改字只需动这一处 */
 
-/* 首页打字机轮播 */
+/* 首页打字机轮播（身份与意象） */
 export const HERO_TEXTS = [
   '你好，我是观烬——一个十六岁的少年。',
+  '「观烬」两个字的意思：看火烧完之后，剩下什么。',
   '白天是被作业追着跑的高中生，晚上写代码、做设计。',
   '「余烬」是没烧完的火：看着暗了，其实还在发热。',
+  '十六岁写的字会幼稚吗？会。但不写，连幼稚都没有。',
   '有一架琴，在等我；有一篇关于琴的故事，在这里。',
+  '校服口袋里装过琴谱，也装过写了一半的诗。',
+  '这里是一座数字花园——不设门槛，只有一堆火。',
   '这里装着我所有烧过、和还在烧的想法。',
 ]
 
@@ -19,6 +23,45 @@ export const NIGHT_TYPE_LINE = '这么晚还没睡？火替你留着。'
 export const TYPE_TRIGGERS: Record<string, string> = {
   huo: '火，收下了。',
   embers: '这个词，刻在站名里。',
+}
+
+/* 季节句：打字机按当前季节随机插一句 */
+export type Season = 'spring' | 'summer' | 'autumn' | 'winter'
+
+export const SEASON_TEXTS: Record<Season, string[]> = {
+  spring: ['春天了，火边写字，边等雨停。', '三月的风翻纸，比谁都快。'],
+  summer: ['夏天的火最吵，蝉替它伴奏。', '把风扇对着稿纸吹，字也跟着凉快。'],
+  autumn: ['秋天适合把烧过的东西，拿出来晒一晒。', '灰是秋天的雪，落得很慢。'],
+  winter: ['冬天写字，要先烤烤手，再烤烤心。', '窗外越冷，炉边越暖——写作也是这个道理。'],
+}
+
+export function seasonOf(d = new Date()): Season {
+  const m = d.getMonth() + 1
+  if (m >= 3 && m <= 5) return 'spring'
+  if (m >= 6 && m <= 8) return 'summer'
+  if (m >= 9 && m <= 11) return 'autumn'
+  return 'winter'
+}
+
+/* 惊喜句：偶尔从轮播里跳出来——身份冷知识、站内小机关的提示 */
+export const SURPRISE_LINES = [
+  '打字机里的句子，会跟着季节换——你现在读到的是哪一句？',
+  '试试敲一个「huo」。',
+  '长按那枚「余」印，会有事发生。',
+  '页脚的火苗，是活着的——发会儿呆看看。',
+  '琴键有八十八个，够弹完这一整个冬天。',
+  '这站的代码和文字，出自同一双手。',
+  '按 G 再按 B，能跳到博客——这是给键盘党的暗号。',
+]
+
+/* 从数组里随机抽 n 个（不重复），用于打字机的「时不时跳出来」 */
+export function pickRandom<T>(arr: T[], n: number): T[] {
+  const pool = [...arr]
+  const out: T[] = []
+  while (pool.length && out.length < n) {
+    out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0])
+  }
+  return out
 }
 
 /* 读毕箴言（文章页） */
