@@ -26,7 +26,7 @@ import {
   type FireKind,
   type WuxingKind,
 } from '@/lib/tests'
-import { downloadReport } from '@/lib/report'
+import { exportReport } from '@/lib/report'
 
 type TestId = 'mbti' | 'fire' | 'wuxing' | 'daypillar'
 type View = 'hub' | 'tiers' | 'quiz' | 'result' | 'pillar'
@@ -51,6 +51,7 @@ export function PlayHub() {
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<number[]>([])
   const [copied, setCopied] = useState(false)
+  const [overlay, setOverlay] = useState('')
   const [birth, setBirth] = useState('')
   const [hourIdx, setHourIdx] = useState(-1)
   const [hourText, setHourText] = useState('')
@@ -514,7 +515,7 @@ export function PlayHub() {
               <button
                 type="button"
                 onClick={() =>
-                  downloadReport(
+                  exportReport(
                     {
                       kicker: test === 'mbti' ? 'MBTI' : test === 'wuxing' ? '五行问' : test === 'daypillar' ? '八字 · 四柱' : '你是哪种火',
                       code: result.code,
@@ -534,6 +535,7 @@ export function PlayHub() {
                           : undefined,
                     },
                     `embers-${test}-${result.code}.png`,
+                    setOverlay,
                   )
                 }
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity active:scale-[0.97]"
@@ -599,6 +601,27 @@ export function PlayHub() {
           </m.div>
         )}
       </AnimatePresence>
+
+      {/* 导出兜底层：WebView 不支持下载时，显示图片让用户长按保存 */}
+      {overlay && (
+        <div
+          className="fixed inset-0 z-[95] bg-black/85 flex flex-col items-center justify-center gap-4 px-6"
+          onClick={() => setOverlay('')}
+          role="dialog"
+          aria-label="长按图片保存"
+        >
+          <p className="text-sm text-white/90 font-mono">长按图片保存 · 点空白处关闭</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={overlay} alt="测试报告" className="max-h-[70vh] max-w-full rounded-lg shadow-2xl" />
+          <button
+            type="button"
+            onClick={() => setOverlay('')}
+            className="px-6 py-2.5 rounded-full bg-white/90 text-black text-sm"
+          >
+            关闭
+          </button>
+        </div>
+      )}
     </div>
   )
 }

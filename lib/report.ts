@@ -167,19 +167,50 @@ export function drawReport(d: ReportData): string {
   return canvas.toDataURL('image/png')
 }
 
-export function downloadReport(d: ReportData, filename: string) {
-  if (typeof document === 'undefined') return
+/* 三层导出策略：
+   1. 支持 Web Share 文件分享（多数手机浏览器/WebView）→ 拉起系统分享面板，可保存可转发
+   2. 移动端但不支持分享 → 页内弹图片层，长按保存（WebView 唯一定保底有效的路）
+   3. 桌面 → 直接触发下载
+   原因：APP 内置 WebView 通常不实现 <a download> 的下载监听，点了毫无反应。 */
+export async function exportReport(
+  d: ReportData,
+  filename: string,
+  onOverlay: (dataUrl: string) => void,
+) {
+  let url = ''
   try {
-    const url = drawReport(d)
-    if (!url) {
-      window.alert('当前浏览器不支持图片导出，试试系统浏览器打开本页')
+    url = drawReport(d)
+  } catch {
+    /* canvas 不可用 */
+  }
+  if (!url) {
+    window.alert('当前浏览器不支持图片导出，试试用系统浏览器打开本页')
+    return
+  }
+
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+
+  try {
+    const blob = await (await fetch(url)).blob()
+    const file = new File([blob], filename, { type: 'image/png' })
+    const canShare = typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })
+    if (canShare) {
+      await navigator.share({ files: [file], title: '余烬 EMBERS · 测试报告' })
       return
     }
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-  } catch {
-    window.alert('导出失败——试试系统浏览器（Safari / Chrome）打开本页再导出')
+  } catch (e) {
+    /* 用户取消分享不算失败 */
+    if (e instanceof Error && e.name === 'AbortError') return
+    /* 继续走下面的兜底 */
   }
+
+  if (isMobile) {
+    onOverlay(url)
+    return
+  }
+
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
 }
