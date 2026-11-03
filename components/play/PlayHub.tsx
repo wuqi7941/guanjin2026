@@ -17,10 +17,13 @@ import {
   WUXING_RESULTS,
   dayPillar,
   GAN_META,
+  BRANCH_HOURS,
+  hourPillar,
   type MbtiTier,
   type FireKind,
   type WuxingKind,
 } from '@/lib/tests'
+import { downloadReport } from '@/lib/report'
 
 type TestId = 'mbti' | 'fire' | 'wuxing' | 'daypillar'
 type View = 'hub' | 'tiers' | 'quiz' | 'result' | 'pillar'
@@ -46,6 +49,9 @@ export function PlayHub() {
   const [answers, setAnswers] = useState<number[]>([])
   const [copied, setCopied] = useState(false)
   const [birth, setBirth] = useState('')
+  const [hourIdx, setHourIdx] = useState(-1)
+  const [hourText, setHourText] = useState('')
+  const [today] = useState(() => new Date().toISOString().slice(0, 10))
   const [pillar, setPillar] = useState<UnifiedResult | null>(null)
 
   const [mbtiSet, setMbtiSet] = useState<ReturnType<typeof buildMbtiSet>>([])
@@ -112,8 +118,18 @@ export function PlayHub() {
     const p = dayPillar(birth)
     if (!p) return
     const meta = GAN_META[p.gan]
+    let hText = ''
+    let code = `${p.gan}${p.zhi}`
+    if (hourIdx >= 0) {
+      const h = hourPillar(p.gan, BRANCH_HOURS[hourIdx].h)
+      if (h) {
+        hText = `${h.gan}${h.zhi}时`
+        code = `${p.gan}${p.zhi} · ${h.gan}${h.zhi}时`
+      }
+    }
+    setHourText(hText)
     setPillar({
-      code: `${p.gan}${p.zhi}`,
+      code,
       name: `${meta.yinYang} · ${meta.wuxing}`,
       sub: meta.image,
       tags: meta.tags,
@@ -266,9 +282,9 @@ export function PlayHub() {
               <ArrowLeft className="w-3.5 h-3.5" aria-hidden />
               返回
             </button>
-            <h2 className="text-2xl font-semibold tracking-[-0.01em] text-[var(--ink)] mb-2">八字 · 日柱</h2>
+            <h2 className="text-2xl font-semibold tracking-[-0.01em] text-[var(--ink)] mb-2">八字 · 日柱与时柱</h2>
             <p className="text-sm text-[var(--ink-subtle)] mb-8 max-w-[50ch]">
-              输入你的公历出生日期（2019 年之后出生的先等等，算法还没背到）。
+              输入公历出生日期（1990 年至今）；知道出生时辰的话一起选上，时柱用五鼠遁推算。
             </p>
             <div className="flex flex-col gap-4">
               <label htmlFor="pillar-date" className="text-[11px] font-mono text-[var(--ink-tertiary)]">
@@ -278,11 +294,27 @@ export function PlayHub() {
                 id="pillar-date"
                 type="date"
                 value={birth}
-                min="1901-01-01"
-                max="2019-12-31"
+                min="1990-01-01"
+                max={today}
                 onChange={(e) => setBirth(e.target.value)}
                 className="px-4 py-3 rounded-xl text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] outline-none transition-colors duration-200 focus:border-[var(--accent)] max-w-xs"
               />
+              <label htmlFor="pillar-hour" className="text-[11px] font-mono text-[var(--ink-tertiary)]">
+                出生时辰（可选，用于时柱）
+              </label>
+              <select
+                id="pillar-hour"
+                value={hourIdx}
+                onChange={(e) => setHourIdx(Number(e.target.value))}
+                className="px-4 py-3 rounded-xl text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] outline-none transition-colors duration-200 focus:border-[var(--accent)] max-w-xs"
+              >
+                <option value={-1}>不知道 / 不说</option>
+                {BRANCH_HOURS.map((b, i) => (
+                  <option key={b.zhi} value={i}>
+                    {b.label}
+                  </option>
+                ))}
+              </select>
               <button
                 type="button"
                 onClick={calcPillar}
@@ -395,7 +427,7 @@ export function PlayHub() {
               <p className="mt-6 font-display italic text-[var(--accent)] text-base">「{result.ember}」</p>
             )}
 
-            <div className="mt-10 flex items-center justify-center gap-3">
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
               {test !== 'daypillar' && (
                 <button
                   type="button"
@@ -406,6 +438,26 @@ export function PlayHub() {
                   再测一次
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() =>
+                  downloadReport(
+                    {
+                      kicker: test === 'mbti' ? 'MBTI' : test === 'wuxing' ? '五行问' : test === 'daypillar' ? '八字 · 日柱' : '你是哪种火',
+                      code: result.code,
+                      name: result.name,
+                      sub: result.sub,
+                      tags: result.tags,
+                      text: result.text,
+                      ember: result.ember,
+                    },
+                    `embers-${test}-${result.code}.png`,
+                  )
+                }
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[var(--accent)] text-[var(--accent)] text-sm hover:bg-[var(--accent-soft)] transition-colors active:scale-[0.97]"
+              >
+                导出报告图
+              </button>
               <button
                 type="button"
                 onClick={copyResult}

@@ -751,3 +751,30 @@ export const GAN_META: Record<string, GanMeta> = {
     ember: '润物无声，也是一种声势。',
   },
 }
+
+/* ============ 时柱（五鼠遁：日干 + 时支 → 时干支） ============ */
+
+export const BRANCH_HOURS = [
+  { zhi: '子', label: '子时 23:00-00:59', h: 0 },
+  { zhi: '丑', label: '丑时 01:00-02:59', h: 1 },
+  { zhi: '寅', label: '寅时 03:00-04:59', h: 2 },
+  { zhi: '卯', label: '卯时 05:00-06:59', h: 3 },
+  { zhi: '辰', label: '辰时 07:00-08:59', h: 4 },
+  { zhi: '巳', label: '巳时 09:00-10:59', h: 5 },
+  { zhi: '午', label: '午时 11:00-12:59', h: 6 },
+  { zhi: '未', label: '未时 13:00-14:59', h: 7 },
+  { zhi: '申', label: '申时 15:00-16:59', h: 8 },
+  { zhi: '酉', label: '酉时 17:00-18:59', h: 9 },
+  { zhi: '戌', label: '戌时 19:00-20:59', h: 10 },
+  { zhi: '亥', label: '亥时 21:00-22:59', h: 11 },
+]
+
+/* 五鼠遁：甲己日起甲子时，乙庚日丙子，丙辛日戊子，丁壬日庚子，戊癸日壬子。
+   时干序 = (日干序 % 5) × 2 + 时支序（mod 10）。 */
+export function hourPillar(dayGan: string, hour: number): { gan: string; zhi: string } | null {
+  const dayGanIdx = GAN.indexOf(dayGan)
+  if (dayGanIdx < 0) return null
+  const zhiIdx = Math.floor((((hour + 1) % 24) / 2) % 12)
+  const ganIdx = ((dayGanIdx % 5) * 2 + zhiIdx) % 10
+  return { gan: GAN[ganIdx], zhi: ZHI[zhiIdx] }
+}
