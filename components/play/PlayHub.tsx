@@ -21,7 +21,9 @@ import {
   BRANCH_HOURS,
   hourPillar,
   fullBazi,
+  meihuaNumbers,
   type FullBazi,
+  type MeihuaResult,
   type MbtiTier,
   type FireKind,
   type WuxingKind,
@@ -29,7 +31,7 @@ import {
 import { exportReport } from '@/lib/report'
 
 type TestId = 'mbti' | 'fire' | 'wuxing' | 'daypillar'
-type View = 'hub' | 'tiers' | 'quiz' | 'result' | 'pillar'
+type View = 'hub' | 'tiers' | 'quiz' | 'result' | 'pillar' | 'meihua' | 'meihuaResult'
 
 interface UnifiedResult {
   code: string
@@ -56,6 +58,8 @@ export function PlayHub() {
   const [hourIdx, setHourIdx] = useState(-1)
   const [hourText, setHourText] = useState('')
   const [bazi, setBazi] = useState<FullBazi | null>(null)
+  const [mhNums, setMhNums] = useState<[string, string, string]>(['', '', ''])
+  const [mhResult, setMhResult] = useState<MeihuaResult | null>(null)
   const [today] = useState(() => new Date().toISOString().slice(0, 10))
   const [pillar, setPillar] = useState<UnifiedResult | null>(null)
 
@@ -143,6 +147,14 @@ export function PlayHub() {
       ember: meta.ember,
     })
     setView('result')
+  }
+
+  const castMeihua = () => {
+    const [a, b, c] = mhNums.map((v) => parseInt(v, 10))
+    const r = meihuaNumbers(a, b, c)
+    if (!r) return
+    setMhResult(r)
+    setView('meihuaResult')
   }
 
   const back = () => {
@@ -233,6 +245,17 @@ export function PlayHub() {
               </p>
               <span className="acard-go mt-4">
                 开始
+                <span aria-hidden>→</span>
+              </span>
+            </button>
+            <button type="button" onClick={() => setView('meihua')} className="acard text-left p-6 sm:p-7">
+              <span className="text-[10px] font-mono tracking-[0.2em] text-[var(--ink-tertiary)]">梅花易数 · 10 秒</span>
+              <h2 className="acard-title mt-3">三数起卦</h2>
+              <p className="acard-excerpt mt-2">
+                心里想一件事，随口报三个数——上卦、下卦、动爻，一次起完。
+              </p>
+              <span className="acard-go mt-4">
+                起卦
                 <span aria-hidden>→</span>
               </span>
             </button>
@@ -337,6 +360,124 @@ export function PlayHub() {
                 排我的日柱
               </button>
             </div>
+          </m.div>
+        )}
+
+        {view === 'meihua' && (
+          <m.div key="meihua" {...anim}>
+            <button
+              type="button"
+              onClick={() => setView('hub')}
+              className="flex items-center gap-1.5 text-xs font-mono text-[var(--ink-subtle)] hover:text-[var(--accent)] transition-colors mb-8"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" aria-hidden />
+              返回
+            </button>
+            <h2 className="text-2xl font-semibold tracking-[-0.01em] text-[var(--ink)] mb-2">梅花易数 · 三数起卦</h2>
+            <p className="text-sm text-[var(--ink-subtle)] mb-3 max-w-[52ch]">
+              心里想一件事，随口报三个数（一至九百九十九）。
+              第一数定上卦，第二数定下卦，第三数定动爻——老法子是这么起的。
+            </p>
+            <p className="text-xs text-[var(--ink-tertiary)] mb-8 max-w-[52ch]">
+              数字取余八定卦、余六定动爻；动爻所在的一卦为用，另一卦为体，按五行生克看吉凶。
+            </p>
+            <div className="flex flex-wrap items-end gap-4">
+              {(['上卦数', '下卦数', '动爻数'] as const).map((label, i) => (
+                <label key={label} className="flex flex-col gap-2">
+                  <span className="text-[11px] font-mono text-[var(--ink-tertiary)]">{label}</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={999}
+                    value={mhNums[i]}
+                    onChange={(e) => {
+                      const next = [...mhNums] as [string, string, string]
+                      next[i] = e.target.value
+                      setMhNums(next)
+                    }}
+                    className="w-28 px-4 py-3 rounded-xl text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
+                  />
+                </label>
+              ))}
+              <button
+                type="button"
+                onClick={castMeihua}
+                disabled={mhNums.some((v) => !v)}
+                className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 active:scale-[0.97] ${
+                  mhNums.every((v) => v) ? 'bg-[var(--accent)] text-white hover:opacity-90' : 'opacity-45 cursor-not-allowed bg-[var(--accent)] text-white'
+                }`}
+              >
+                起卦
+              </button>
+            </div>
+          </m.div>
+        )}
+
+        {view === 'meihuaResult' && mhResult && (
+          <m.div key="meihuaResult" {...anim}>
+            <button
+              type="button"
+              onClick={() => setView('meihua')}
+              className="flex items-center gap-1.5 text-xs font-mono text-[var(--ink-subtle)] hover:text-[var(--accent)] transition-colors mb-8"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" aria-hidden />
+              再起一卦
+            </button>
+            <p className="text-[10px] font-mono tracking-[0.24em] text-[var(--ink-tertiary)] mb-6 text-center">
+              梅花易数 · 三数起卦
+            </p>
+            <p className="text-center text-sm text-[var(--ink-muted)] mb-8">
+              数字 {mhResult.nums.join(' · ')}
+            </p>
+
+            <div className="flex items-start justify-center gap-10 sm:gap-16">
+              {([
+                { title: '本卦', upper: mhResult.upper, lower: mhResult.lower, lines: mhResult.lines, moving: mhResult.moving },
+                { title: '变卦', upper: mhResult.bianUpper, lower: mhResult.bianLower, lines: mhResult.bianLines, moving: 0 },
+              ] as const).map((g) => (
+                <div key={g.title} className="text-center">
+                  <p className="text-[11px] font-mono text-[var(--ink-tertiary)] mb-3">{g.title}</p>
+                  <p className="text-xs text-[var(--ink-muted)] mb-3">
+                    上{g.upper} · 下{g.lower}
+                  </p>
+                  <div className="flex flex-col gap-1.5 items-center">
+                    {[...g.lines].reverse().map((v, ri) => {
+                      const yaoIdx = g.lines.length - ri
+                      const isMoving = g.moving === yaoIdx
+                      return (
+                        <div key={ri} className="flex items-center gap-2">
+                          {v === 1 ? (
+                            <span className="block h-[6px] w-16 rounded-full bg-[var(--ink)]" />
+                          ) : (
+                            <span className="flex items-center w-16 gap-2">
+                              <span className="block h-[6px] w-[29px] rounded-full bg-[var(--ink)]" />
+                              <span className="block h-[6px] w-[29px] rounded-full bg-[var(--ink)]" />
+                            </span>
+                          )}
+                          <span
+                            className={`w-6 text-[10px] font-mono ${isMoving ? 'text-[var(--accent)]' : 'text-transparent'}`}
+                          >
+                            {isMoving ? '动' : '·'}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p
+              className={`mt-10 text-center text-base font-display ${
+                mhResult.tone === 'good' ? 'text-[var(--fire-top)]' : mhResult.tone === 'watch' ? 'text-[var(--ink-muted)]' : 'text-[var(--accent)]'
+              }`}
+            >
+              {mhResult.verdict}
+            </p>
+            <p className="mt-6 text-xs leading-relaxed text-[var(--ink-tertiary)] text-center max-w-[52ch] mx-auto">
+              卦象按先天八卦数与体用五行生克推。传统说法是「卦由心生，数由口出」——
+              同一个数只起一次卦，问过的事，不必再问。
+            </p>
           </m.div>
         )}
 

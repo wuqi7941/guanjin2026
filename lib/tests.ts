@@ -959,3 +959,83 @@ export const WUXING_CN_TO_KEY: Record<string, WuxingKind> = {
   火: 'fire',
   土: 'earth',
 }
+
+/* ============ 梅花易数 · 数字起卦（独立功能） ============ */
+/* 传统方法：上卦 = 第一数 ÷ 8 取余（余 0 为坤），下卦 = 第二数 ÷ 8 取余，
+   动爻 = 第三数 ÷ 6 取余（余 0 为第六爻）。卦爻自下而上。 */
+
+/* 八卦六爻（下→上，1 阳 0 阴），索引对应先天数 1-8 */
+const TRIGRAM_LINES: number[][] = [
+  [1, 1, 1], /* 乾 */
+  [1, 1, 0], /* 兑 */
+  [1, 0, 1], /* 离 */
+  [1, 0, 0], /* 震 */
+  [0, 1, 1], /* 巽 */
+  [0, 1, 0], /* 坎 */
+  [0, 0, 1], /* 艮 */
+  [0, 0, 0], /* 坤 */
+]
+
+export interface MeihuaResult {
+  upper: string
+  lower: string
+  upperImg: string
+  lowerImg: string
+  moving: number
+  /* 本卦六爻（下→上，1 阳 0 阴） */
+  lines: number[]
+  /* 变卦上下卦名 */
+  bianUpper: string
+  bianLower: string
+  /* 变卦六爻 */
+  bianLines: number[]
+  verdict: string
+  tone: 'good' | 'mid' | 'watch'
+  nums: [number, number, number]
+}
+
+export function meihuaNumbers(a: number, b: number, c: number): MeihuaResult | null {
+  if (![a, b, c].every((n) => Number.isFinite(n) && n > 0)) return null
+  const upIdx = Math.floor(a) % 8
+  const loIdx = Math.floor(b) % 8
+  const mv = Math.floor(c) % 6 || 6
+  const upper = TRIGRAMS[upIdx]
+  const lower = TRIGRAMS[loIdx]
+
+  const lines = [...TRIGRAM_LINES[loIdx], ...TRIGRAM_LINES[upIdx]]
+  /* 动爻：第 mv 爻（1-6，自下而上）翻转 */
+  const bianLines = [...lines]
+  bianLines[mv - 1] = bianLines[mv - 1] === 1 ? 0 : 1
+  const bianLoIdx = TRIGRAM_LINES.findIndex((l) => l.every((v, i) => v === bianLines[i]))
+  const bianUpIdx = TRIGRAM_LINES.findIndex((l) => l.every((v, i) => v === bianLines[i + 3]))
+
+  /* 体用：动爻在下卦（1-3 爻）→ 下卦为用、上卦为体 */
+  const body = mv <= 3 ? upper : lower
+  const use = mv <= 3 ? lower : upper
+  const ORDER = ['木', '火', '土', '金', '水']
+  const i = ORDER.indexOf(body.wx)
+  const j = ORDER.indexOf(use.wx)
+  const diff = (j - i + 5) % 5
+  let verdict = ''
+  let tone: 'good' | 'mid' | 'watch' = 'mid'
+  if (diff === 4) { verdict = '用生体——大吉，外力来助'; tone = 'good' }
+  else if (diff === 0) { verdict = '体用比和——诸事顺遂'; tone = 'good' }
+  else if (diff === 2) { verdict = '体克用——可为，小费力'; tone = 'good' }
+  else if (diff === 1) { verdict = '体生用——有耗泄，量力而行'; tone = 'watch' }
+  else { verdict = '用克体——有阻滞，宜守不宜进'; tone = 'watch' }
+
+  return {
+    upper: upper.name,
+    lower: lower.name,
+    upperImg: upper.img,
+    lowerImg: lower.img,
+    moving: mv,
+    lines,
+    bianUpper: bianUpIdx >= 0 ? TRIGRAMS[bianUpIdx].name : '?',
+    bianLower: bianLoIdx >= 0 ? TRIGRAMS[bianLoIdx].name : '?',
+    bianLines,
+    verdict,
+    tone,
+    nums: [Math.floor(a), Math.floor(b), Math.floor(c)],
+  }
+}
