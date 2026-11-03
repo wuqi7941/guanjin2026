@@ -26,6 +26,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/timeline/`, lastModified: at(latest), priority: 0.6, changeFrequency: 'weekly' },
     { url: `${BASE}/tags/`, lastModified: at(latest), priority: 0.6, changeFrequency: 'weekly' },
     { url: `${BASE}/bookmarks/`, lastModified: at(latest), priority: 0.4, changeFrequency: 'monthly' },
+    { url: `${BASE}/play/`, lastModified: at(latest), priority: 0.5, changeFrequency: 'monthly' },
     ...posts.map((post) => ({
       url: `${BASE}/blog/${post.slug}/`,
       lastModified: at(post.date),

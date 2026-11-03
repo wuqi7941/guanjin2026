@@ -25,7 +25,8 @@ const navLinks = [
     ],
   },
   { href: '/about/', label: '关于', idx: '03' },
-  { href: '/contact/', label: '联系', idx: '04' },
+  { href: '/play/', label: '试金石', idx: '04' },
+  { href: '/contact/', label: '联系', idx: '05' },
 ]
 
 const SUB_PREFIX = ['/blog/', '/timeline/', '/tags/', '/bookmarks/']

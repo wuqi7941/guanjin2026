@@ -1978,8 +1978,9 @@ body {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  padding: clamp(0.9rem, 2.6vh, 1.6rem) clamp(1.25rem, 5vw, 2.5rem)
-    calc(1rem + env(safe-area-inset-bottom));
+  /* 顶部垫状态栏：standalone APP 里没有这行，标题和关闭钮会被压进刘海底下 */
+  padding: calc(clamp(0.9rem, 2.6vh, 1.6rem) + env(safe-area-inset-top, 0px))
+    clamp(1.25rem, 5vw, 2.5rem) calc(1rem + env(safe-area-inset-bottom));
 }
 
 .mp-full-head {
