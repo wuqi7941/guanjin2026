@@ -31,6 +31,16 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   return lines
 }
 
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.arcTo(x + w, y, x + w, y + h, r)
+  ctx.arcTo(x + w, y + h, x, y + h, r)
+  ctx.arcTo(x, y + h, x, y, r)
+  ctx.arcTo(x, y, x + w, y, r)
+  ctx.closePath()
+}
+
 export function drawReport(d: ReportData): string {
   const W = 1080
   const H = 1440
@@ -44,6 +54,16 @@ export function drawReport(d: ReportData): string {
   ctx.fillStyle = '#f2ece1'
   ctx.fillRect(0, 0, W, H)
 
+  /* 极淡横向纹理：把「纸」的肌理补上，一眼看去不像纯色块 */
+  ctx.strokeStyle = 'rgba(120, 96, 66, 0.035)'
+  ctx.lineWidth = 1
+  for (let ly = 0; ly < H; ly += 7) {
+    ctx.beginPath()
+    ctx.moveTo(0, ly + 0.5)
+    ctx.lineTo(W, ly + 0.5)
+    ctx.stroke()
+  }
+
   /* 双线边框 */
   ctx.strokeStyle = 'rgba(54, 42, 30, 0.35)'
   ctx.lineWidth = 2
@@ -54,6 +74,9 @@ export function drawReport(d: ReportData): string {
   /* 右上角朱印 */
   ctx.fillStyle = '#9e3b2e'
   ctx.fillRect(W - 168, 92, 76, 76)
+  ctx.strokeStyle = 'rgba(242, 236, 225, 0.65)'
+  ctx.lineWidth = 1.5
+  ctx.strokeRect(W - 162, 98, 64, 64)
   ctx.fillStyle = '#ffffff'
   ctx.font = `600 30px ${SERIF}`
   ctx.textAlign = 'center'
@@ -81,6 +104,10 @@ export function drawReport(d: ReportData): string {
   ctx.fillStyle = '#9e3b2e'
   ctx.font = `italic 52px ${SERIF}`
   ctx.fillText(`「${d.name}」 · ${d.sub}`, W / 2, 520)
+
+  /* 短朱线：给「名字」这一行一个落款感 */
+  ctx.fillStyle = 'rgba(158, 59, 46, 0.55)'
+  ctx.fillRect(W / 2 - 36, 548, 72, 3)
 
   /* 分隔细线 */
   ctx.strokeStyle = 'rgba(54, 42, 30, 0.2)'
@@ -118,9 +145,12 @@ export function drawReport(d: ReportData): string {
   for (const tag of d.tags.slice(0, 4)) {
     ctx.font = `500 26px ${SERIF}`
     const w = ctx.measureText(tag).width + 44
-    ctx.strokeStyle = 'rgba(54, 42, 30, 0.3)'
-    ctx.strokeRect(tagX, tagY - 30, w, 48)
-    ctx.fillStyle = 'rgba(54, 42, 30, 0.75)'
+    roundRect(ctx, tagX, tagY - 30, w, 48, 24)
+    ctx.strokeStyle = 'rgba(54, 42, 30, 0.28)'
+    ctx.stroke()
+    ctx.fillStyle = 'rgba(54, 42, 30, 0.08)'
+    ctx.fill()
+    ctx.fillStyle = 'rgba(54, 42, 30, 0.78)'
     ctx.textAlign = 'center'
     ctx.fillText(tag, tagX + w / 2, tagY)
     tagX += w + 18
@@ -132,19 +162,23 @@ export function drawReport(d: ReportData): string {
   ctx.font = `400 38px ${SERIF}`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'alphabetic'
-  const lines = wrapText(ctx, d.text, W - 192)
+  const lines = wrapText(ctx, d.text.replace(/^\s+/, ''), W - 192 - 76)
   let y = d.pillars?.length === 4 ? 996 : 736
-  for (const line of lines.slice(0, 8)) {
-    ctx.fillText(line, 96, y)
+  for (let i = 0; i < Math.min(lines.length, 8); i++) {
+    /* 首行缩进两个字（中文书卷排版） */
+    ctx.fillText(lines[i], i === 0 ? 96 + 76 : 96, y)
     y += 62
   }
 
-  /* 烬语 */
+  /* 烬语：引文样式——左侧朱线 + 缩进，像书页里被拖出来的一行 */
   if (d.ember) {
+    const ey = Math.min(y + 40, H - 320)
+    ctx.fillStyle = 'rgba(158, 59, 46, 0.5)'
+    ctx.fillRect(96, ey - 44, 3, 64)
     ctx.fillStyle = '#9e3b2e'
-    ctx.font = `italic 42px ${SERIF}`
+    ctx.font = `italic 40px ${SERIF}`
     ctx.textAlign = 'left'
-    ctx.fillText(`「${d.ember}」`, 96, Math.min(y + 40, H - 320))
+    ctx.fillText(`「${d.ember}」`, 128, ey)
   }
 
   /* 底部：站名 + 日期 + 链接 */

@@ -852,14 +852,14 @@ function relation(dayWX: string, yearWX: string): { label: string; tone: 'good' 
 
 /* 八卦：先天数 1-8；五行；意象 */
 const TRIGRAMS = [
-  { name: '乾', wx: '金', img: '天 · 刚健' },
-  { name: '兑', wx: '金', img: '泽 · 喜悦' },
-  { name: '离', wx: '火', img: '火 · 光明' },
-  { name: '震', wx: '木', img: '雷 · 震动' },
-  { name: '巽', wx: '木', img: '风 · 顺入' },
-  { name: '坎', wx: '水', img: '水 · 险陷' },
-  { name: '艮', wx: '土', img: '山 · 止守' },
-  { name: '坤', wx: '土', img: '地 · 厚载' },
+  { name: '乾', wx: '金', img: '天 · 刚健', read: '纯阳之卦，主刚健主动——局面硬碰硬，宜取势不宜取巧。' },
+  { name: '兑', wx: '金', img: '泽 · 喜悦', read: '主悦与口舌——话是有用的，但别把话说满。' },
+  { name: '离', wx: '火', img: '火 · 光明', read: '主明与依附——看得清是好事，别被光亮晃了眼。' },
+  { name: '震', wx: '木', img: '雷 · 震动', read: '主动与惊——消息来得突然，先站稳再说。' },
+  { name: '巽', wx: '木', img: '风 · 顺入', read: '主顺与渗透——硬来不如顺着缝隙进。' },
+  { name: '坎', wx: '水', img: '水 · 险陷', read: '主险与智——有坑，但水总能流出去，别慌。' },
+  { name: '艮', wx: '土', img: '山 · 止守', read: '主止与界限——停下来不是坏事，该守的守住。' },
+  { name: '坤', wx: '土', img: '地 · 厚载', read: '主顺与承载——急不来，慢慢积。' },
 ]
 
 export interface FullBazi {
@@ -992,6 +992,10 @@ export interface MeihuaResult {
   verdict: string
   tone: 'good' | 'mid' | 'watch'
   nums: [number, number, number]
+  /* 解析：组合意象 / 体用说明 / 变卦去向 */
+  composition: string
+  bodyUse: string
+  bianText: string
 }
 
 export function meihuaNumbers(a: number, b: number, c: number): MeihuaResult | null {
@@ -1024,6 +1028,9 @@ export function meihuaNumbers(a: number, b: number, c: number): MeihuaResult | n
   else if (diff === 1) { verdict = '体生用——有耗泄，量力而行'; tone = 'watch' }
   else { verdict = '用克体——有阻滞，宜守不宜进'; tone = 'watch' }
 
+  const bianUp = bianUpIdx >= 0 ? TRIGRAMS[bianUpIdx] : upper
+  const bianLo = bianLoIdx >= 0 ? TRIGRAMS[bianLoIdx] : lower
+
   return {
     upper: upper.name,
     lower: lower.name,
@@ -1031,11 +1038,33 @@ export function meihuaNumbers(a: number, b: number, c: number): MeihuaResult | n
     lowerImg: lower.img,
     moving: mv,
     lines,
-    bianUpper: bianUpIdx >= 0 ? TRIGRAMS[bianUpIdx].name : '?',
-    bianLower: bianLoIdx >= 0 ? TRIGRAMS[bianLoIdx].name : '?',
+    bianUpper: bianUp.name,
+    bianLower: bianLo.name,
     bianLines,
     verdict,
     tone,
     nums: [Math.floor(a), Math.floor(b), Math.floor(c)],
+    composition: `上${upper.name}下${lower.name}：外面是${upper.img.split(' · ')[0]}，里面是${lower.img.split(' · ')[0]}。${upper.read}`,
+    bodyUse: `体为${body.name}（${body.wx}），用为${use.name}（${use.wx}）——动爻在${mv <= 3 ? '下' : '上'}卦，${mv <= 3 ? '下' : '上'}卦为用，变化之力从这里来。`,
+    bianText: `事情的走向，落在${bianUp.name}与${bianLo.name}之间——${bianLo.read}`,
   }
+}
+
+/* 三数输入的智能解析：支持「3 5 7」「3,5,7」「3、5、7」「357」（三位连写） */
+export function parseMeihuaInput(raw: string): [number, number, number] | null {
+  const s = raw.trim()
+  if (!s) return null
+  /* 带分隔符：按空格/逗号/顿号/斜杠拆 */
+  const parts = s.split(/[\s,，、/]+/).filter(Boolean)
+  let nums: number[] = []
+  if (parts.length === 3) {
+    nums = parts.map((p) => parseInt(p, 10))
+  } else if (parts.length === 1 && /^\d{3}$/.test(parts[0])) {
+    /* 三位连写：逐位拆 */
+    nums = parts[0].split('').map((ch) => parseInt(ch, 10))
+  } else {
+    return null
+  }
+  if (nums.length !== 3 || nums.some((n) => !Number.isFinite(n) || n <= 0)) return null
+  return [nums[0], nums[1], nums[2]]
 }

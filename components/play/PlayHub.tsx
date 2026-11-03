@@ -22,6 +22,7 @@ import {
   hourPillar,
   fullBazi,
   meihuaNumbers,
+  parseMeihuaInput,
   type FullBazi,
   type MeihuaResult,
   type MbtiTier,
@@ -58,7 +59,7 @@ export function PlayHub() {
   const [hourIdx, setHourIdx] = useState(-1)
   const [hourText, setHourText] = useState('')
   const [bazi, setBazi] = useState<FullBazi | null>(null)
-  const [mhNums, setMhNums] = useState<[string, string, string]>(['', '', ''])
+  const [mhInput, setMhInput] = useState('')
   const [mhResult, setMhResult] = useState<MeihuaResult | null>(null)
   const [today] = useState(() => new Date().toISOString().slice(0, 10))
   const [pillar, setPillar] = useState<UnifiedResult | null>(null)
@@ -149,9 +150,10 @@ export function PlayHub() {
     setView('result')
   }
 
+  const mhParsed = parseMeihuaInput(mhInput)
   const castMeihua = () => {
-    const [a, b, c] = mhNums.map((v) => parseInt(v, 10))
-    const r = meihuaNumbers(a, b, c)
+    if (!mhParsed) return
+    const r = meihuaNumbers(mhParsed[0], mhParsed[1], mhParsed[2])
     if (!r) return
     setMhResult(r)
     setView('meihuaResult')
@@ -381,30 +383,37 @@ export function PlayHub() {
             <p className="text-xs text-[var(--ink-tertiary)] mb-8 max-w-[52ch]">
               数字取余八定卦、余六定动爻；动爻所在的一卦为用，另一卦为体，按五行生克看吉凶。
             </p>
-            <div className="flex flex-wrap items-end gap-4">
-              {(['上卦数', '下卦数', '动爻数'] as const).map((label, i) => (
-                <label key={label} className="flex flex-col gap-2">
-                  <span className="text-[11px] font-mono text-[var(--ink-tertiary)]">{label}</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={999}
-                    value={mhNums[i]}
-                    onChange={(e) => {
-                      const next = [...mhNums] as [string, string, string]
-                      next[i] = e.target.value
-                      setMhNums(next)
-                    }}
-                    className="w-28 px-4 py-3 rounded-xl text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
-                  />
-                </label>
-              ))}
+            <div className="flex flex-col gap-4 max-w-sm">
+              <label htmlFor="mh-input" className="text-[11px] font-mono text-[var(--ink-tertiary)]">
+                三个数（空格分开，或连写三位）
+              </label>
+              <input
+                id="mh-input"
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                value={mhInput}
+                onChange={(e) => setMhInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') castMeihua()
+                }}
+                placeholder="例如：3 5 7 或 357"
+                className="px-4 py-3 rounded-xl text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
+              />
+              {/* 实时解析预览：让用户确认三个数分到了哪 */}
+              <p className="text-xs font-mono text-[var(--ink-tertiary)] h-4" aria-live="polite">
+                {mhParsed
+                  ? `上卦数 ${mhParsed[0]} · 下卦数 ${mhParsed[1]} · 动爻数 ${mhParsed[2]}`
+                  : mhInput.trim()
+                    ? '没读懂——三个数用空格分开，或连写三位（如 357）'
+                    : ''}
+              </p>
               <button
                 type="button"
                 onClick={castMeihua}
-                disabled={mhNums.some((v) => !v)}
-                className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 active:scale-[0.97] ${
-                  mhNums.every((v) => v) ? 'bg-[var(--accent)] text-white hover:opacity-90' : 'opacity-45 cursor-not-allowed bg-[var(--accent)] text-white'
+                disabled={!mhParsed}
+                className={`self-start inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 active:scale-[0.97] ${
+                  mhParsed ? 'bg-[var(--accent)] text-white hover:opacity-90' : 'opacity-45 cursor-not-allowed bg-[var(--accent)] text-white'
                 }`}
               >
                 起卦
@@ -467,8 +476,15 @@ export function PlayHub() {
               ))}
             </div>
 
+            {/* 解析：组合意象 / 体用 / 变卦去向 */}
+            <div className="mt-10 max-w-md mx-auto flex flex-col gap-4 text-left">
+              <p className="text-sm sm:text-[15px] leading-[1.9] text-[var(--ink-muted)]">{mhResult.composition}</p>
+              <p className="text-sm sm:text-[15px] leading-[1.9] text-[var(--ink-muted)]">{mhResult.bodyUse}</p>
+              <p className="text-sm sm:text-[15px] leading-[1.9] text-[var(--ink-muted)]">{mhResult.bianText}</p>
+            </div>
+
             <p
-              className={`mt-10 text-center text-base font-display ${
+              className={`mt-8 text-center text-base font-display ${
                 mhResult.tone === 'good' ? 'text-[var(--fire-top)]' : mhResult.tone === 'watch' ? 'text-[var(--ink-muted)]' : 'text-[var(--accent)]'
               }`}
             >
