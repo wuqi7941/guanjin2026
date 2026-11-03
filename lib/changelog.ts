@@ -289,4 +289,16 @@ export const CHANGELOG: ChangelogEntry[] = [
 
 /* 显式版本号：同一天可以有多条记录，靠它区分「看过哪一版」。
    加新条目时手动改这里（消费方是 ChangelogPanel 的首次来访提示）。 */
-export const CHANGELOG_VERSION = '2026-11-01-audit'
+export const CHANGELOG_VERSION = '2026-11-03-ui'
+
+/* 同一天的多条记录合并为一条展示（一天只一张纸）：
+   title 取当天首条，items 顺次拼接。原始 CHANGELOG 保持录入粒度不变。 */
+export const CHANGELOG_BY_DAY: ChangelogEntry[] = (() => {
+  const byDay = new Map<string, ChangelogEntry>()
+  for (const e of CHANGELOG) {
+    const cur = byDay.get(e.date)
+    if (!cur) byDay.set(e.date, { ...e, items: [...e.items] })
+    else cur.items = [...cur.items, ...e.items]
+  }
+  return Array.from(byDay.values())
+})()

@@ -3,6 +3,7 @@ import { Hero } from '@/components/Hero'
 import { DailyLine } from '@/components/DailyLine'
 import { NovelBanner } from '@/components/NovelBanner'
 import { LatestPostsSection } from '@/components/LatestPostsSection'
+import { AnniversaryStrip } from '@/components/AnniversaryStrip'
 import { ExhibitMarquee } from '@/components/ExhibitMarquee'
 import { ResumeBanner } from '@/components/ResumeBanner'
 import { Footer } from '@/components/Footer'
@@ -20,6 +21,8 @@ export const metadata = {
 export default function Home() {
   /* 《攒一架琴》在下方 NovelBanner 已单独占一条横幅，首页目录里不再重复 */
   const featuredPosts = getFeaturedPosts().filter((post) => post.slug !== 'novel-01')
+  /* 历史上的今天：只传三个字段的轻量数组——全量 PostMeta 序列化进 HTML 要多 ~40KB */
+  const anniversaryLite = getAllPosts().map((p) => ({ slug: p.slug, title: p.title, date: p.date }))
   const novel = getPostBySlug('novel-01')
   const stats = getArchiveStats()
   const all = getAllPosts()
@@ -54,6 +57,7 @@ export default function Home() {
       <ExhibitMarquee items={quotes} />
       <DailyLine words={(stats.chars / 10000).toFixed(1)} />
       {novel && <NovelBanner post={novel} />}
+      <AnniversaryStrip posts={anniversaryLite} />
       <LatestPostsSection posts={featuredPosts} />
       <Footer />
     </main>

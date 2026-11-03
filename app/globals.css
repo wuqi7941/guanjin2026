@@ -1786,7 +1786,9 @@ body {
   right: 0;
   bottom: 0.9rem;
   margin: 0 auto;
-  width: min(560px, calc(100vw - 1.75rem));
+  /* 100% 而不是 100vw：fixed 元素的百分比基于视口（已扣滚动条），
+     100vw 在 Windows 滚动条 / APP WebView 里会偏宽——这就是「播放器 UI 偏移」 */
+  width: min(560px, calc(100% - 1.75rem));
   height: 52px;
   display: flex;
   align-items: center;
@@ -1816,7 +1818,7 @@ body {
 @media (max-width: 639px) {
   .mp-bar {
     bottom: calc(0.6rem + env(safe-area-inset-bottom));
-    width: calc(100vw - 1.25rem);
+    width: calc(100% - 1.25rem);
   }
   /* 入口小球（播放条出现前的状态）也要让开 iPhone 底部横条 */
   .mplayer {
@@ -2798,7 +2800,7 @@ body {
   left: 1.25rem;
   bottom: 1.25rem;
   z-index: 74;
-  width: min(340px, calc(100vw - 2.5rem));
+  width: min(340px, calc(100% - 2.5rem));
   display: flex;
   align-items: flex-start;
   gap: 0.8rem;

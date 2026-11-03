@@ -13,6 +13,7 @@ import { ThemeColorSync } from '@/components/ThemeColorSync'
 import { GlowFollow } from '@/components/GlowFollow'
 import { PaperLight } from '@/components/PaperLight'
 import { CopyGuard } from '@/components/CopyGuard'
+import { TitleWhisper } from '@/components/TitleWhisper'
 import { ScrollProgress } from '@/components/ScrollProgress'
 import { QuickNav } from '@/components/QuickNav'
 
@@ -125,6 +126,7 @@ export default function RootLayout({
           <CopyGuard />
           <ScrollProgress />
           <QuickNav />
+          <TitleWhisper />
         </Providers>
       </body>
     </html>

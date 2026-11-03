@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { m, AnimatePresence } from 'framer-motion'
 import { ArrowDown, Check } from 'lucide-react'
-import { CHANGELOG, CHANGELOG_VERSION } from '@/lib/changelog'
+import { CHANGELOG_BY_DAY, CHANGELOG_VERSION } from '@/lib/changelog'
 import { EASE } from '@/lib/motion'
 
 const SEEN_KEY = 'embers_changelog_seen'
@@ -45,7 +45,7 @@ export function ChangelogPanel() {
   }
 
   const list = useMemo(
-    () => (expanded ? CHANGELOG : CHANGELOG.slice(0, COLLAPSED_COUNT)),
+    () => (expanded ? CHANGELOG_BY_DAY : CHANGELOG_BY_DAY.slice(0, COLLAPSED_COUNT)),
     [expanded],
   )
 
@@ -66,9 +66,9 @@ export function ChangelogPanel() {
               新
             </span>
             <div className="changelog-toast-body">
-              <p className="changelog-toast-title">这个站改过 {CHANGELOG.length} 次</p>
+              <p className="changelog-toast-title">这个站改过 {CHANGELOG_BY_DAY.length} 天</p>
               <p className="changelog-toast-sub">
-                最近一次：{CHANGELOG[0].title}。这条提示只出现这一次。
+                最新一次：{CHANGELOG_BY_DAY[0].title}。这条提示只出现这一次。
               </p>
               <div className="changelog-toast-actions">
                 <button type="button" onClick={jumpTo} className="changelog-toast-primary">
@@ -89,12 +89,12 @@ export function ChangelogPanel() {
           <span className="w-8 h-[2px] bg-[var(--accent)]" />
           <span className="kicker">Changelog · 更新记录</span>
           <span className="hidden sm:block flex-1 h-px bg-[var(--hairline)]" aria-hidden />
-          <span className="exhibit-meta tabular-nums">{CHANGELOG.length} 次</span>
+          <span className="exhibit-meta tabular-nums">{CHANGELOG_BY_DAY.length} 天</span>
         </div>
 
         <p className="changelog-intro">
-          只记看得见的变化。最新一次：<strong>{CHANGELOG[0].title}</strong>（
-          {CHANGELOG[0].date.replace(/-/g, '.')}）。
+          只记看得见的变化。最新一次：<strong>{CHANGELOG_BY_DAY[0].title}</strong>（
+          {CHANGELOG_BY_DAY[0].date.replace(/-/g, '.')}）。
         </p>
 
         <ol className="changelog-list">
@@ -126,14 +126,14 @@ export function ChangelogPanel() {
           ))}
         </ol>
 
-        {CHANGELOG.length > COLLAPSED_COUNT && (
+        {CHANGELOG_BY_DAY.length > COLLAPSED_COUNT && (
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
             className="changelog-more"
             aria-expanded={expanded}
           >
-            {expanded ? '收起 −' : `看更早的 ${CHANGELOG.length - COLLAPSED_COUNT} 次更新 +`}
+            {expanded ? '收起 −' : `看更早的 ${CHANGELOG_BY_DAY.length - COLLAPSED_COUNT} 天的更新 +`}
           </button>
         )}
       </section>
