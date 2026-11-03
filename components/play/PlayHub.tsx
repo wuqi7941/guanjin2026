@@ -1,6 +1,6 @@
 'use client'
 
-/* 试金石：站内小测试（MBTI 三档 / 你是哪种火）。
+/* 试金石：站内小测试（MBTI 三档 / 五行问 / 日柱 / 你是哪种火）。
    纯前端状态机，无后端；结果可复制分享。 */
 
 import { useMemo, useState } from 'react'
@@ -13,14 +13,29 @@ import {
   buildMbtiSet,
   FIRE_QUESTIONS,
   FIRE_RESULTS,
+  WUXING_QUESTIONS,
+  WUXING_RESULTS,
+  dayPillar,
+  GAN_META,
   type MbtiTier,
   type FireKind,
+  type WuxingKind,
 } from '@/lib/tests'
 
-type TestId = 'mbti' | 'fire'
-type View = 'hub' | 'tiers' | 'quiz' | 'result'
+type TestId = 'mbti' | 'fire' | 'wuxing' | 'daypillar'
+type View = 'hub' | 'tiers' | 'quiz' | 'result' | 'pillar'
 
-const FIRE_META = { title: '你是哪种火', sub: '五个问题，四种火——炉火、烛火、篝火、星火。', count: 5, tag: '约 1 分钟' }
+interface UnifiedResult {
+  code: string
+  name: string
+  sub: string
+  tags: string[]
+  text: string
+  ember: string
+}
+
+const FIRE_META = { title: '你是哪种火', count: 5 }
+const WUXING_META = { title: '五行问', count: 10 }
 
 export function PlayHub() {
   const reduce = !!useReducedMotion()
@@ -30,13 +45,14 @@ export function PlayHub() {
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<number[]>([])
   const [copied, setCopied] = useState(false)
+  const [birth, setBirth] = useState('')
+  const [pillar, setPillar] = useState<UnifiedResult | null>(null)
 
-  /* 当套题：MBTI 进 quiz 前由 buildMbtiSet 生成；火测固定题序 */
   const [mbtiSet, setMbtiSet] = useState<ReturnType<typeof buildMbtiSet>>([])
-  const questions = test === 'mbti' ? mbtiSet : FIRE_QUESTIONS
+  const questions = test === 'mbti' ? mbtiSet : test === 'fire' ? FIRE_QUESTIONS : WUXING_QUESTIONS
   const total = questions.length
 
-  const result = useMemo(() => {
+  const result = useMemo<UnifiedResult | null>(() => {
     if (view !== 'result' || !test) return null
     if (test === 'mbti') {
       let E = 0, I = 0, S = 0, N = 0, T = 0, F = 0, J = 0, P = 0
@@ -55,19 +71,30 @@ export function PlayHub() {
       })
       const code = `${E >= I ? 'E' : 'I'}${S >= N ? 'S' : 'N'}${T >= F ? 'T' : 'F'}${J >= P ? 'J' : 'P'}`
       const meta = MBTI_TYPES[code]
-      /* 统一形状：code 主码、sub 副标、tags 特质、text 分析、ember 烬语 */
       return { code, name: meta.name, sub: meta.fire, tags: meta.tags, text: meta.text, ember: meta.ember }
     }
-    const tally: Record<FireKind, number> = { hearth: 0, candle: 0, bonfire: 0, spark: 0 }
-    FIRE_QUESTIONS.forEach((q, i) => {
-      const picked = answers[i]
-      if (picked === undefined) return
-      tally[q.options[picked].kind] += 1
-    })
-    const kind = (Object.keys(tally) as FireKind[]).reduce((a, b) => (tally[b] > tally[a] ? b : a))
-    const meta = FIRE_RESULTS[kind]
-    return { code: meta.en, name: meta.name, sub: meta.en, tags: [] as string[], text: meta.text, ember: '' }
-  }, [view, test, answers, mbtiSet])
+    if (test === 'fire') {
+      const tally: Record<FireKind, number> = { hearth: 0, candle: 0, bonfire: 0, spark: 0 }
+      FIRE_QUESTIONS.forEach((q, i) => {
+        const picked = answers[i]
+        if (picked !== undefined) tally[q.options[picked].kind] += 1
+      })
+      const kind = (Object.keys(tally) as FireKind[]).reduce((a, b) => (tally[b] > tally[a] ? b : a))
+      const meta = FIRE_RESULTS[kind]
+      return { code: meta.en, name: meta.name, sub: meta.en, tags: [], text: meta.text, ember: '' }
+    }
+    if (test === 'wuxing') {
+      const tally: Record<WuxingKind, number> = { metal: 0, wood: 0, water: 0, fire: 0, earth: 0 }
+      WUXING_QUESTIONS.forEach((q, i) => {
+        const picked = answers[i]
+        if (picked !== undefined) tally[q.options[picked].kind] += 1
+      })
+      const kind = (Object.keys(tally) as WuxingKind[]).reduce((a, b) => (tally[b] > tally[a] ? b : a))
+      const meta = WUXING_RESULTS[kind]
+      return { code: meta.name, name: meta.gan, sub: `五行 · ${meta.name}`, tags: meta.tags, text: meta.text, ember: meta.ember }
+    }
+    return pillar
+  }, [view, test, answers, mbtiSet, pillar])
 
   const start = (id: TestId, t?: MbtiTier) => {
     setTest(id)
@@ -77,7 +104,27 @@ export function PlayHub() {
     }
     setStep(0)
     setAnswers([])
-    setView('quiz')
+    setPillar(null)
+    setView(id === 'daypillar' ? 'pillar' : 'quiz')
+  }
+
+  const calcPillar = () => {
+    const p = dayPillar(birth)
+    if (!p) return
+    const meta = GAN_META[p.gan]
+    setPillar({
+      code: `${p.gan}${p.zhi}`,
+      name: `${meta.yinYang} · ${meta.wuxing}`,
+      sub: meta.image,
+      tags: meta.tags,
+      text: meta.text,
+      ember: meta.ember,
+    })
+    setView('result')
+  }
+
+  const back = () => {
+    if (step > 0) setStep(step - 1)
   }
 
   const pick = (idx: number) => {
@@ -93,7 +140,9 @@ export function PlayHub() {
     const label =
       test === 'mbti'
         ? `我的 MBTI 是 ${result.code}「${result.name}」`
-        : `我是「${result.name} · ${result.code}」`
+        : test === 'daypillar'
+          ? `我的日柱是 ${result.code}（${result.name}）`
+          : `我是「${result.name} · ${result.code}」`
     const url = 'https://guanjin2011.de5.net/play/'
     navigator.clipboard?.writeText(`${label}\n——余烬 EMBERS 试金石 ${url}`).catch(() => {})
     setCopied(true)
@@ -112,7 +161,9 @@ export function PlayHub() {
   const currentOptions =
     test === 'mbti'
       ? [mbtiSet[step]?.a.text, mbtiSet[step]?.b.text].filter(Boolean)
-      : (FIRE_QUESTIONS[step]?.options.map((o) => o.text) ?? [])
+      : test === 'fire'
+        ? (FIRE_QUESTIONS[step]?.options.map((o) => o.text) ?? [])
+        : (WUXING_QUESTIONS[step]?.options.map((o) => o.text) ?? [])
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -120,10 +171,32 @@ export function PlayHub() {
         {view === 'hub' && (
           <m.div key="hub" {...anim} className="grid sm:grid-cols-2 gap-5">
             <button type="button" onClick={() => setView('tiers')} className="acard text-left p-6 sm:p-7">
-              <span className="text-[10px] font-mono tracking-[0.2em] text-[var(--ink-tertiary)]">三档 · 2-8 分钟</span>
+              <span className="text-[10px] font-mono tracking-[0.2em] text-[var(--ink-tertiary)]">四档 · 2-30 分钟</span>
               <h2 className="acard-title mt-3">MBTI</h2>
               <p className="acard-excerpt mt-2">
-                十六型人格测试。速测 16 题、标准 32 题、深测 48 题——题库里抽，每档都能测。
+                十六型人格测试。速测 16、标准 32、深测 48、深挖 200——题库里抽，每档都能测。
+              </p>
+              <span className="acard-go mt-4">
+                开始
+                <span aria-hidden>→</span>
+              </span>
+            </button>
+            <button type="button" onClick={() => start('daypillar')} className="acard text-left p-6 sm:p-7">
+              <span className="text-[10px] font-mono tracking-[0.2em] text-[var(--ink-tertiary)]">真算法 · 10 秒</span>
+              <h2 className="acard-title mt-3">八字 · 日柱</h2>
+              <p className="acard-excerpt mt-2">
+                输入公历生日，算出你的日柱干支——十天干日主，各有各的命。
+              </p>
+              <span className="acard-go mt-4">
+                开始
+                <span aria-hidden>→</span>
+              </span>
+            </button>
+            <button type="button" onClick={() => start('wuxing')} className="acard text-left p-6 sm:p-7">
+              <span className="text-[10px] font-mono tracking-[0.2em] text-[var(--ink-tertiary)]">原创 · 约 2 分钟</span>
+              <h2 className="acard-title mt-3">五行问</h2>
+              <p className="acard-excerpt mt-2">
+                十道五选一：金主义、木主仁、水主智、火主礼、土主信。你的底色是哪一行。
               </p>
               <span className="acard-go mt-4">
                 开始
@@ -143,7 +216,7 @@ export function PlayHub() {
             </button>
             <p className="sm:col-span-2 text-xs leading-relaxed text-[var(--ink-subtle)] max-w-[56ch]">
               都是纯前端的小测试：答案不离开你的浏览器，不上传、不记录。
-              想留下就自己复制结果。
+              日柱是真实的干支纪日换算（锚点经多源万年历核验），但完整八字要看年月时三柱——这里只管你出生那天。
             </p>
           </m.div>
         )}
@@ -160,7 +233,7 @@ export function PlayHub() {
             </button>
             <h2 className="text-2xl font-semibold tracking-[-0.01em] text-[var(--ink)] mb-2">MBTI · 选一档</h2>
             <p className="text-sm text-[var(--ink-subtle)] mb-8 max-w-[50ch]">
-              题库 48 题，按维度随机抽——同一档重测，题目也不完全一样。档位越高越准。
+              题库 200 题，按维度随机抽——同一档重测，题目也不完全一样。档位越高越准。
             </p>
             <div className="flex flex-col gap-3">
               {MBTI_TIERS.map((t) => (
@@ -183,16 +256,57 @@ export function PlayHub() {
           </m.div>
         )}
 
+        {view === 'pillar' && (
+          <m.div key="pillar" {...anim}>
+            <button
+              type="button"
+              onClick={() => setView('hub')}
+              className="flex items-center gap-1.5 text-xs font-mono text-[var(--ink-subtle)] hover:text-[var(--accent)] transition-colors mb-8"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" aria-hidden />
+              返回
+            </button>
+            <h2 className="text-2xl font-semibold tracking-[-0.01em] text-[var(--ink)] mb-2">八字 · 日柱</h2>
+            <p className="text-sm text-[var(--ink-subtle)] mb-8 max-w-[50ch]">
+              输入你的公历出生日期（2019 年之后出生的先等等，算法还没背到）。
+            </p>
+            <div className="flex flex-col gap-4">
+              <label htmlFor="pillar-date" className="text-[11px] font-mono text-[var(--ink-tertiary)]">
+                公历生日
+              </label>
+              <input
+                id="pillar-date"
+                type="date"
+                value={birth}
+                min="1901-01-01"
+                max="2019-12-31"
+                onChange={(e) => setBirth(e.target.value)}
+                className="px-4 py-3 rounded-xl text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] outline-none transition-colors duration-200 focus:border-[var(--accent)] max-w-xs"
+              />
+              <button
+                type="button"
+                onClick={calcPillar}
+                disabled={!birth}
+                className={`self-start inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 active:scale-[0.97] ${
+                  birth ? 'bg-[var(--accent)] text-white hover:opacity-90' : 'opacity-45 cursor-not-allowed'
+                }`}
+              >
+                排我的日柱
+              </button>
+            </div>
+          </m.div>
+        )}
+
         {view === 'quiz' && test && (
           <m.div key="quiz" {...anim}>
             <div className="flex items-center justify-between mb-6">
               <button
                 type="button"
-                onClick={() => setView(test === 'mbti' ? 'tiers' : 'hub')}
+                onClick={() => setView('hub')}
                 className="flex items-center gap-1.5 text-xs font-mono text-[var(--ink-subtle)] hover:text-[var(--accent)] transition-colors"
               >
                 <ArrowLeft className="w-3.5 h-3.5" aria-hidden />
-                返回
+                退出
               </button>
               <span className="text-xs font-mono text-[var(--ink-tertiary)] tabular-nums">
                 {step + 1} / {total}
@@ -200,7 +314,7 @@ export function PlayHub() {
             </div>
 
             {/* 进度条 */}
-            <div className="h-[3px] bg-[var(--surface-2)] rounded-full overflow-hidden mb-10" aria-hidden>
+            <div className="h-[3px] bg-[var(--surface-2)] rounded-full overflow-hidden mb-6" aria-hidden>
               <div
                 className="h-full bg-gradient-to-r from-[var(--fire-top)] to-[var(--fire-bot)] transition-all duration-300"
                 style={{ width: `${((step + 1) / total) * 100}%` }}
@@ -227,6 +341,18 @@ export function PlayHub() {
                     </button>
                   ))}
                 </div>
+                {/* 返回上一题 */}
+                <button
+                  type="button"
+                  onClick={back}
+                  disabled={step === 0}
+                  className={`mt-6 inline-flex items-center gap-1.5 text-xs font-mono transition-colors ${
+                    step === 0 ? 'opacity-30 cursor-default text-[var(--ink-tertiary)]' : 'text-[var(--ink-subtle)] hover:text-[var(--accent)]'
+                  }`}
+                >
+                  <ArrowLeft className="w-3 h-3" aria-hidden />
+                  上一题
+                </button>
               </m.div>
             </AnimatePresence>
           </m.div>
@@ -235,16 +361,18 @@ export function PlayHub() {
         {view === 'result' && result && test && (
           <m.div key="result" {...anim} className="text-center">
             <p className="text-[10px] font-mono tracking-[0.24em] text-[var(--ink-tertiary)] mb-6">
-              {test === 'mbti' ? `MBTI · ${MBTI_TIERS.find((t) => t.id === tier)!.label}` : FIRE_META.title} · 结果
+              {test === 'mbti' ? `MBTI · ${MBTI_TIERS.find((t) => t.id === tier)!.label}` : test === 'daypillar' ? '八字 · 日柱' : test === 'wuxing' ? '五行问 · 结果' : '你是哪种火 · 结果'}
             </p>
             <p
               className={`font-display font-semibold text-[var(--ink)] leading-none ${
-                test === 'mbti' ? 'text-6xl sm:text-7xl tracking-tight' : 'text-5xl sm:text-6xl'
+                test === 'mbti' || test === 'daypillar' ? 'text-5xl sm:text-6xl tracking-tight' : 'text-6xl sm:text-7xl'
               }`}
             >
-              {test === 'mbti' ? result.code : result.name}
+              {result.code}
             </p>
-            <p className="mt-4 text-lg text-[var(--accent)] font-display italic">「{result.name}」 · {result.sub}</p>
+            <p className="mt-4 text-lg text-[var(--accent)] font-display italic">
+              {result.name} · {result.sub}
+            </p>
 
             {result.tags.length > 0 && (
               <div className="mt-5 flex flex-wrap justify-center gap-2">
@@ -268,14 +396,16 @@ export function PlayHub() {
             )}
 
             <div className="mt-10 flex items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => start(test, tier)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[var(--hairline-strong)] text-sm text-[var(--ink-muted)] hover:text-[var(--ink)] hover:border-[var(--ink-subtle)] transition-colors"
-              >
-                <RotateCcw className="w-4 h-4" aria-hidden />
-                再测一次
-              </button>
+              {test !== 'daypillar' && (
+                <button
+                  type="button"
+                  onClick={() => start(test, tier)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[var(--hairline-strong)] text-sm text-[var(--ink-muted)] hover:text-[var(--ink)] hover:border-[var(--ink-subtle)] transition-colors"
+                >
+                  <RotateCcw className="w-4 h-4" aria-hidden />
+                  再测一次
+                </button>
+              )}
               <button
                 type="button"
                 onClick={copyResult}
