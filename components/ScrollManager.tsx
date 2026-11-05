@@ -10,6 +10,9 @@ const STORE_KEY = 'embers-scroll-pos'
 /* 阅读体验：滚动位置记忆（返回不丢位置）+ 回顶按钮 + 滚动中性能标记（.scrolling） */
 export function ScrollManager() {
   const pathname = usePathname()
+  /* /play/ 是纯前端状态机：上次离开时的位置对应的是某个长结果页，回来视图已重置成入口，
+     恢复位置只会看到一片空白。这类页面不记、也不恢复滚动位置。 */
+  const isPlay = pathname === '/play' || pathname.startsWith('/play/')
   const [show, setShow] = useState(false)
   const stopTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -39,9 +42,15 @@ export function ScrollManager() {
     const saved = sessionStorage.getItem(STORE_KEY)
     if (saved) {
       try {
-        const map: Record<string, number> = JSON.parse(saved)
+        const parsed: unknown = JSON.parse(saved)
+        /* 旧版本格式 / 手改过的 sessionStorage 可能不是对象：
+           直接当 map 用会在 delete 时抛错，恢复逻辑整块失效。 */
+        const map: Record<string, number> =
+          parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+            ? (parsed as Record<string, number>)
+            : {}
         const y = map[pathname]
-        if (typeof y === 'number' && y > 0) {
+        if (!isPlay && typeof y === 'number' && y > 0) {
           requestAnimationFrame(() => {
             window.scrollTo({ top: y, behavior: 'auto' })
           })
@@ -52,16 +61,21 @@ export function ScrollManager() {
         /* ignore */
       }
     }
-  }, [pathname])
+  }, [pathname, isPlay])
 
   /* 离开页面前把位置存进去，供返回时恢复。
      2026-10-25：站内跳转改成客户端路由后不再触发 pagehide，
      所以另外在「点击站内链接」时先存一次当前位置（捕获阶段，早于路由切换）。 */
   useEffect(() => {
     const save = () => {
+      if (isPlay) return
       try {
         const saved = sessionStorage.getItem(STORE_KEY)
-        const map: Record<string, number> = saved ? JSON.parse(saved) : {}
+        const parsedMap: unknown = saved ? JSON.parse(saved) : {}
+        const map: Record<string, number> =
+          parsedMap && typeof parsedMap === 'object' && !Array.isArray(parsedMap)
+            ? (parsedMap as Record<string, number>)
+            : {}
         map[pathname] = window.scrollY
         sessionStorage.setItem(STORE_KEY, JSON.stringify(map))
       } catch {
@@ -88,7 +102,7 @@ export function ScrollManager() {
       document.removeEventListener('click', onClick, true)
       window.removeEventListener('pagehide', save)
     }
-  }, [pathname])
+  }, [pathname, isPlay])
 
   return (
     <button

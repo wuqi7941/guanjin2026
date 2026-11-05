@@ -18,7 +18,7 @@ const posts: Post[] = withWordCount(postsData as Post[])
 
 /* 构建期体检（只告警不拦构建）：
    title 与 slug 相同意味着生成脚本漏取了标题，列表 / 搜索 / RSS / JSON-LD
-   会直接把文件名当标题展示。已知 piano-01/02/03/05 四篇如此。
+   会直接把文件名当标题展示。piano-01/02/03/05 四篇曾如此，2026-11-05 已按正文首行标题补齐，现在应为 0 条。
    用一个模块级标志只打一次——构建会并行加载本模块多次，否则同一句话刷好几遍。 */
 let titleWarned = false
 if (process.env.NODE_ENV === 'production' && !titleWarned) {

@@ -683,6 +683,9 @@ main img:hover {
 /* 展厅灯光入场（结合 framer-motion variants 的过渡由 JS 控制） */
 
 .card-static {
+  /* 微信 X5/XWeb 不认 color-mix：整条声明被丢弃后卡片会变全透明。
+     先给普通色兜底，支持的浏览器再走半透明增强（与 .glass-nav 同一做法）。 */
+  background: var(--surface-1);
   background: color-mix(in srgb, var(--surface-1) 76%, transparent);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
@@ -1454,6 +1457,9 @@ html.scrolling .glass-nav {
     position: fixed;
     inset: 0 0 0 auto;
     width: 100%;
+    /* 老内核（Chrome 88 / 部分 X5）不认 dvh，先给 vh 兜底 */
+    height: 100vh;
+    max-height: 100vh;
     height: 100dvh;
     max-height: 100dvh;
     border-radius: 28px 0 0 28px;
@@ -4318,10 +4324,16 @@ html.dark .prose-custom a:hover {
 .quick-hint {
   position: fixed;
   left: 50%;
-  bottom: 2rem;
+  /* 抬到播放器小球 / 回顶按钮之上：7 组快捷键换行后是一条宽带，
+     贴着底会正好压住右下角控制区 */
+  bottom: 6.5rem;
   transform: translateX(-50%);
   z-index: var(--z-toast);
   display: flex;
+  /* 7 组快捷键在小屏一行放不下，允许换行而不是溢出屏幕 */
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: calc(100vw - 2rem);
   gap: 0.5rem;
   padding: 0.45rem 0.6rem;
   border: 1px solid var(--hairline);

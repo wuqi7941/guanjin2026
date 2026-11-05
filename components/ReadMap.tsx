@@ -21,7 +21,17 @@ export function ReadMap({ all }: { all: PostCardData[] }) {
     const sync = () => {
       try {
         const raw = localStorage.getItem(PROGRESS_KEY)
-        setRead(raw ? (JSON.parse(raw) as Record<string, Entry>) : {})
+        const parsed: unknown = raw ? JSON.parse(raw) : {}
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          setRead({})
+          return
+        }
+        /* 逐条验形状：reading.ts 写的是 { p, t }，脏值不该混进统计 */
+        const clean: Record<string, Entry> = {}
+        for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+          if (v && typeof v === 'object' && typeof (v as Entry).p === 'number') clean[k] = v as Entry
+        }
+        setRead(clean)
       } catch {
         setRead({})
       }

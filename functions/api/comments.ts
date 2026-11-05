@@ -42,15 +42,17 @@ const RATE_WINDOW_MS = 60_000
 const RATE_MAX = 2
 const PER_SLUG_MAX = 500
 
-const json = (data: unknown, status = 200) =>
+const json = (data: unknown, status = 200, cacheable = false) =>
   new Response(JSON.stringify(data), {
     status,
     headers: {
       'content-type': 'application/json; charset=utf-8',
-      /* GET 响应可被边缘缓存 30 秒并容许 5 分钟内回源旧值——评论不必毫秒级新鲜，
-         但每个访客每次进文章都打 D1 就浪费了；POST/DELETE 依旧 no-store */
+      /* 只有列表 GET 允许边缘缓存 30 秒——评论不必毫秒级新鲜，
+         但每个访客每次进文章都打 D1 就浪费了。
+         POST 回包里带删除凭据 secret，DELETE 是写操作；两者成功时同样是 200，
+         早先只按状态码判缓存会把它们也标成 public，一律改成 no-store。 */
       'cache-control':
-        status === 200
+        cacheable && status === 200
           ? 'public, max-age=30, stale-while-revalidate=300'
           : 'no-store',
       'access-control-allow-origin': '*',
@@ -99,7 +101,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       avatar: r.avatar,
       createdAt: r.created_at,
     })),
-  })
+  }, 200, true)
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {

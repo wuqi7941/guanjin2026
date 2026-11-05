@@ -8,7 +8,9 @@ import { EGGS, collectEgg, getCollectedEggs, type EggKey } from '@/lib/eggs'
 import { EASE } from '@/lib/motion'
 
 export function Footer() {
-  const currentYear = new Date().getFullYear()
+  /* 年份也别在渲染期取：静态导出会把构建年份写死，跨年 hydrate 不一致 */
+  const [currentYear, setCurrentYear] = useState<number | null>(null)
+  useEffect(() => setCurrentYear(new Date().getFullYear()), [])
   const [eggs, setEggs] = useState<EggKey[]>([])
   const [eggsOpen, setEggsOpen] = useState(false)
 
@@ -91,7 +93,7 @@ export function Footer() {
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8">
           <p className="text-xs text-[var(--ink-tertiary)] font-mono tracking-widest">
-            © {currentYear} 观烬 GUANJIN — ALL RIGHTS RESERVED
+            © {currentYear ?? ''} 观烬 GUANJIN — ALL RIGHTS RESERVED
           </p>
           <p
             onClick={onWarmTap}

@@ -6,7 +6,7 @@ import Link from 'next/link'
 
 export const metadata = {
   title: '试金石 — 余烬 EMBERS',
-  description: '观烬的站内小测试：十六型 MBTI 正经测、你是哪种火快测。纯前端，答案不上传。',
+  description: '观烬的站内小测试：MBTI 四档、八字日柱与四柱、五行问、你是哪种火、梅花易数三数起卦。纯前端，答案不上传。',
   alternates: { canonical: '/play/' },
 }
 

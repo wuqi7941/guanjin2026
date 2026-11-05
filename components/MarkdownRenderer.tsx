@@ -36,6 +36,11 @@ export function MarkdownRenderer({ content, variant = 'default' }: MarkdownRende
   const articleRef = useRef<HTMLElement>(null)
   const novel = variant === 'novel'
 
+  /* 文章页已经有一枚 H1（PostContent 的 .post-headline）。
+     旧稿里有 5 篇正文第一行还带 # 标题，直接渲染会变成双 H1——
+     只剥掉「全文第一行」的 H1，正文中间的小标题一律保留。 */
+  const body = content.replace(/^\s*#\s+[^\n]*\n+/, '')
+
   /* 落日首字只对「以汉字/字母开头」的文章启用：
      引号/括号/空格开头的（全站 7 篇）first-letter 匹配会异常或丑，禁用之 */
   const dropcap = (() => {
@@ -100,7 +105,7 @@ export function MarkdownRenderer({ content, variant = 'default' }: MarkdownRende
           h4: (props) => <Heading level={4} {...props} />,
         }}
       >
-        {content}
+        {body}
       </ReactMarkdown>
     </article>
   )

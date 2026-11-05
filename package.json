@@ -10,7 +10,9 @@
     "build": "next build",
     "build:prod": "next build",
     "typecheck": "tsc --noEmit",
-    "preflight": "node scripts/preflight.mjs",
+    "preflight": "node scripts/preflight.mjs && node scripts/site-check.mjs && node scripts/privacy-check.mjs",
+    "privacy": "node scripts/privacy-check.mjs",
+    "site-check": "node scripts/site-check.mjs",
     "audit": "npm audit --registry=https://registry.npmjs.org",
     "check-tracks": "node scripts/check-tracks.mjs"
   },

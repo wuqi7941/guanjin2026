@@ -198,8 +198,9 @@ export function SearchDialog() {
     const onOpen = () => openDialog()
     window.addEventListener('embers-search', onOpen)
     const onKey = (e: KeyboardEvent) => {
-      const el = document.activeElement
-      const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || (el as HTMLElement).isContentEditable)
+      /* 日期/下拉选择框里按 / 也别把搜索弹出来；用 closest 兼容可编辑容器的子元素 */
+      const el = document.activeElement as HTMLElement | null
+      const typing = !!el?.closest('input, textarea, select, [contenteditable="true"]')
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         openDialog()
@@ -285,7 +286,7 @@ export function SearchDialog() {
       closeDialog()
     } else if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setActive((i) => Math.min(hits.length - 1, i + 1))
+      setActive((i) => (hits.length ? Math.min(hits.length - 1, i + 1) : 0))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setActive((i) => Math.max(0, i - 1))
@@ -305,7 +306,8 @@ export function SearchDialog() {
   useEffect(() => {
     const box = listRef.current
     if (!box) return
-    const el = box.children[active] as HTMLElement | undefined
+    /* 结果里混着分组标题，children[active] 会指错行；按命中序号精确定位 */
+    const el = box.querySelector<HTMLElement>(`[data-hit-index="${active}"]`)
     if (el) el.scrollIntoView({ block: 'nearest' })
   }, [active])
 
@@ -397,6 +399,7 @@ export function SearchDialog() {
                         {showBodyHead && <p className="search-group-label">正文里提到</p>}
                         <button
                           type="button"
+                          data-hit-index={i}
                           className={`search-hit ${i === active ? 'is-active' : ''}`}
                           onMouseEnter={() => setActive(i)}
                           onClick={() => go(hit.doc.slug)}

@@ -55,6 +55,13 @@ export function PageTransition() {
       safetyRef.current = setTimeout(() => {
         leavingRef.current = false
         setPhase('idle')
+        /* 路由没变化时不会走「到达新页」的 effect，标记会一直留着，
+           下一次跳页就会被误判成墨染进场、凭空闪一层墨。 */
+        try {
+          sessionStorage.removeItem(WIPE_KEY)
+        } catch {
+          /* ignore */
+        }
       }, 3000)
       /* 200ms ≈ 墨层铺满（0.16s）+ 余量：铺满后再换页，避免新页从墨层边缘露出 */
       clearTimeout(pushTimerRef.current)
@@ -86,6 +93,14 @@ export function PageTransition() {
       /* 只有纯锚点（同路径 + 带 hash）交给浏览器滚动；
          其余站内跳转——包括点当前页的导航——都走墨染，不再有"点了没动画"的情况 */
       if (url.pathname === location.pathname && url.search === location.search && url.hash) return
+      /* 点「当前页」的导航项（比如已在首页又点首页）：router.push 同路径不会改 pathname，
+         墨层铺满后没有「到达新页」来揭开它，只能靠 3 秒兜底硬撤，看着就是卡了一下。
+         这种情况直接回顶部，别播墨染。 */
+      if (url.pathname === location.pathname && url.search === location.search) {
+        e.preventDefault()
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
 
       /* 捕获阶段接管：preventDefault 后 next/link 会放弃自己的导航，
          由墨层铺满再 router.push，过渡与路由时机才可控。

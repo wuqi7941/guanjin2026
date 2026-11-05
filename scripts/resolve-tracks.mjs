@@ -1,11 +1,15 @@
 /**
- * resolve-tracks.js -- 把「歌名;歌手」清单解析成网易云 ID，并验证可播
- * 用法: node resolve-tracks.js [--apply]
+ * resolve-tracks.mjs -- 把「歌名|歌手」清单解析成网易云 ID，并验证可播
+ * 用法: node scripts/resolve-tracks.mjs [--apply]（不加 --apply 只做 dry run）
  */
-const fs = require('fs')
-const path = require('path')
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const ROOT = String.raw`C:\Users\Admin（无密码）\Desktop\workbuddy\my-app`
+/* 根目录从脚本自身位置推出来，别写死本机绝对路径——
+   这份源码会 push 到公开仓库，写死会带上 Windows 用户名和目录结构。
+   .mjs 里也不能用 require，之前那份脚本因此一运行就报 ReferenceError。 */
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const API = 'https://music-api.gdstudio.xyz/api.php'
 const METING = 'https://api.injahow.cn/meting/?type=url&id='
 
@@ -214,7 +218,7 @@ async function playable(id) {
 }
 
 /* 曲库：搜索走 GD Studio（免会员、免 key），播放走 meting 的 302 直链。
-   加歌时跑 _tools/resolve-tracks.js 重新生成，别手抄 ID。 */
+   加歌时跑 scripts/resolve-tracks.mjs 重新生成，别手抄 ID。 */
 export const PLAYLIST: Track[] = [
 ${lines2.join('\n')}
 ]

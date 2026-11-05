@@ -3,7 +3,7 @@
 /* 历史上的今天：如果今天（月-日）恰好是某篇旧文章发表的日子，首页亮出一条小签。
    客户端取当天日期（静态导出下构建日的日期会冻结，不能在服务端算）。 */
 import Link from 'next/link'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { m, useReducedMotion } from 'framer-motion'
 import { EASE } from '@/lib/motion'
 
@@ -14,10 +14,20 @@ interface AnniversaryStripProps {
 export function AnniversaryStrip({ posts }: AnniversaryStripProps) {
   const reduce = !!useReducedMotion()
 
-  const hits = useMemo(() => {
+  /* 静态导出也会预渲染客户端组件：渲染期读 new Date() 会把「构建那天」写死进 HTML，
+     隔天 hydrate 就会对不上。日期一律挂载后再取，首帧两边都渲染空。 */
+  const [today, setToday] = useState<{ mmdd: string; year: number } | null>(null)
+  useEffect(() => {
     const now = new Date()
-    const mmdd = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-    const year = now.getFullYear()
+    setToday({
+      mmdd: `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
+      year: now.getFullYear(),
+    })
+  }, [])
+
+  const hits = useMemo(() => {
+    if (!today) return []
+    const { mmdd, year } = today
     return posts
       .filter((p) => {
         /* 月日匹配，且必须是往年（今年今天发的算是新文，不算纪念） */
@@ -25,7 +35,7 @@ export function AnniversaryStrip({ posts }: AnniversaryStripProps) {
       })
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, 2)
-  }, [posts])
+  }, [posts, today])
 
   if (hits.length === 0) return null
 

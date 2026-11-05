@@ -392,7 +392,12 @@ export function recordVisitDay(): number {
       localStorage.setItem(FIRST_KEY, String(backfillFirstSeen(visits)))
     }
     const raw = localStorage.getItem(DAYS_KEY)
-    const days: string[] = raw ? JSON.parse(raw) : []
+    const parsedDays: unknown = raw ? JSON.parse(raw) : []
+    /* 外部输入：写坏或被旧版本写成别的形状，days.includes 会直接抛错，
+       连续到访彩蛋整块静默失效。只留 ISO 日期字符串。 */
+    const days: string[] = Array.isArray(parsedDays)
+      ? parsedDays.filter((d): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d))
+      : []
     if (!days.includes(today)) {
       days.push(today)
       days.sort()

@@ -3,7 +3,7 @@
 /* 试金石：站内小测试（MBTI 三档 / 五行问 / 日柱 / 你是哪种火）。
    纯前端状态机，无后端；结果可复制分享。 */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { m, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { ArrowLeft, RotateCcw, Copy, Check } from 'lucide-react'
 import { EASE } from '@/lib/motion'
@@ -30,6 +30,17 @@ import {
   type WuxingKind,
 } from '@/lib/tests'
 import { exportReport } from '@/lib/report'
+import {
+  readProgress,
+  saveProgress,
+  dropProgress,
+  PLAY_LABEL,
+  playEntryHint,
+  type PlayEntry,
+  type PlayMap,
+  type PlayTestId,
+  type PlayView,
+} from '@/lib/playProgress'
 
 type TestId = 'mbti' | 'fire' | 'wuxing' | 'daypillar'
 type View = 'hub' | 'tiers' | 'quiz' | 'result' | 'pillar' | 'meihua' | 'meihuaResult'
@@ -42,9 +53,6 @@ interface UnifiedResult {
   text: string
   ember: string
 }
-
-const FIRE_META = { title: '你是哪种火', count: 5 }
-const WUXING_META = { title: '五行问', count: 10 }
 
 export function PlayHub() {
   const reduce = !!useReducedMotion()
@@ -61,12 +69,88 @@ export function PlayHub() {
   const [bazi, setBazi] = useState<FullBazi | null>(null)
   const [mhInput, setMhInput] = useState('')
   const [mhResult, setMhResult] = useState<MeihuaResult | null>(null)
-  const [today] = useState(() => new Date().toISOString().slice(0, 10))
+  /* 静态导出的 HTML 是构建时生成的：渲染期读当前日期会让服务端与客户端 hydrate 对不上；
+     而且 toISOString 取 UTC，北京时间 00:00–08:00 会把「今天」算成昨天。
+     改成挂载后用本地时区补上。 */
+  const [today, setToday] = useState('')
+  useEffect(() => {
+    const d = new Date()
+    const p = (n: number) => String(n).padStart(2, '0')
+    setToday(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`)
+  }, [])
   const [pillar, setPillar] = useState<UnifiedResult | null>(null)
+  const [saved, setSaved] = useState<PlayMap>({})
+  const [exitChoice, setExitChoice] = useState(false)
+
+  const hubRef = useRef<HTMLDivElement>(null)
+  const mounted = useRef(false)
+
+  /* 试金石是单页状态机：切视图、切题都不换路由，浏览器会保留上一段的滚动位置，
+     于是从长结果页进新测试时停在下方一片空白。每次状态切换把测试区对齐到视口顶部。
+     首次挂载不处理——否则刚进页面就被从标题处拽下去。 */
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true
+      return
+    }
+    const el = hubRef.current
+    if (!el) return
+    /* scrollIntoView 遵守 html 的 scroll-padding-top（88px），自动避开固定导航；
+       临时压掉 CSS 的 scroll-behavior:smooth，否则切换时变成一段慢滑动画。 */
+    const root = document.documentElement
+    const prev = root.style.scrollBehavior
+    root.style.scrollBehavior = 'auto'
+    el.scrollIntoView({ block: 'start', inline: 'nearest', behavior: 'auto' })
+    root.style.scrollBehavior = prev
+  }, [view, step])
+
+  /* 导出兜底层：ESC 也能关，不用非得点空白处 */
+  useEffect(() => {
+    if (!overlay) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOverlay('')
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [overlay])
+
+  /* 进页面先把本机存档读出来，hub 顶部才有「继续」入口。
+     localStorage 只在客户端读， SSR 阶段不碰。 */
+  useEffect(() => {
+    setSaved(readProgress())
+  }, [])
 
   const [mbtiSet, setMbtiSet] = useState<ReturnType<typeof buildMbtiSet>>([])
   const questions = test === 'mbti' ? mbtiSet : test === 'fire' ? FIRE_QUESTIONS : WUXING_QUESTIONS
   const total = questions.length
+
+  /* 答题 / 填生日 / 起卦 / 结果页都自动留一份存档，按测试分开互不覆盖。
+     hub 与 tiers 不写——否则一进页面就把上次的进度冲成空。
+     全部留在 localStorage，不上传；用户退出时仍可选择「清空答案」。 */
+  useEffect(() => {
+    const keepable: PlayView[] = ['quiz', 'result', 'pillar', 'meihua', 'meihuaResult']
+    if (!keepable.includes(view as PlayView)) return
+    const hasAny =
+      step > 0 || answers.some((a) => typeof a === 'number') || !!birth || !!mhInput || !!pillar || !!mhResult
+    if (!hasAny) return
+    const key: PlayTestId = view === 'meihua' || view === 'meihuaResult' ? 'meihua' : (test ?? 'mbti')
+    saveProgress({
+      test: key,
+      view: view as PlayView,
+      tier,
+      step,
+      answers: answers.map((a) => (typeof a === 'number' ? a : null)),
+      mbtiSet: key === 'mbti' ? mbtiSet : undefined,
+      birth,
+      hourIdx,
+      hourText,
+      pillar,
+      bazi,
+      mhInput,
+      mhResult,
+      savedAt: Date.now(),
+    })
+  }, [view, test, tier, step, answers, mbtiSet, birth, hourIdx, hourText, pillar, bazi, mhInput, mhResult])
 
   const result = useMemo<UnifiedResult | null>(() => {
     if (view !== 'result' || !test) return null
@@ -111,6 +195,65 @@ export function PlayHub() {
     }
     return pillar
   }, [view, test, answers, mbtiSet, pillar])
+
+  const savedList = Object.values(saved)
+    .sort((a, b) => b.savedAt - a.savedAt)
+    .slice(0, 3)
+
+  /* 从存档回到原处：题目组合、已选答案、生日时辰、卦象、结果都还原 */
+  const resume = (e: PlayEntry) => {
+    const t: TestId | null = e.test === 'meihua' ? null : (e.test as TestId)
+    const qs = Array.isArray(e.mbtiSet) ? e.mbtiSet : []
+    const arr: number[] = []
+    ;(e.answers ?? []).forEach((a, i) => {
+      if (typeof a === 'number') arr[i] = a
+    })
+    const maxStep = e.test === 'mbti' ? qs.length || 16 : e.test === 'wuxing' ? 10 : 5
+    const safeTier: MbtiTier =
+      e.tier === 'quick' || e.tier === 'std' || e.tier === 'full' || e.tier === 'deep' ? e.tier : 'std'
+    const safeHour = Number.isInteger(e.hourIdx)
+      ? Math.max(-1, Math.min(11, e.hourIdx as number))
+      : -1
+    setTest(t)
+    setTier(safeTier)
+    setMbtiSet(qs)
+    setAnswers(arr)
+    setStep(Math.max(0, Math.min(e.step || 0, maxStep - 1)))
+    setBirth(e.birth ?? '')
+    setHourIdx(safeHour)
+    setHourText(e.hourText ?? '')
+    setBazi(e.bazi ?? null)
+    setPillar(e.pillar ?? null)
+    setMhInput(e.mhInput ?? '')
+    setMhResult(e.mhResult ?? null)
+    setExitChoice(false)
+    setView(e.view as View)
+  }
+
+  const activeKey = (): PlayTestId =>
+    view === 'meihua' || view === 'meihuaResult' ? 'meihua' : (test ?? 'mbti')
+
+  /* 退出按钮的两个选项：留着 / 清空。
+     八字生日时辰属于「完成测试也不清除的选项」，清空答案时不一起抹掉。 */
+  const keepAndExit = () => {
+    setSaved(readProgress())
+    setExitChoice(false)
+    setView('hub')
+  }
+
+  const discardAndExit = () => {
+    dropProgress(activeKey())
+    setSaved(readProgress())
+    setStep(0)
+    setAnswers([])
+    setPillar(null)
+    setBazi(null)
+    setMhInput('')
+    setMhResult(null)
+    setHourText('')
+    setExitChoice(false)
+    setView('hub')
+  }
 
   const start = (id: TestId, t?: MbtiTier) => {
     setTest(id)
@@ -201,11 +344,81 @@ export function PlayHub() {
         ? (FIRE_QUESTIONS[step]?.options.map((o) => o.text) ?? [])
         : (WUXING_QUESTIONS[step]?.options.map((o) => o.text) ?? [])
 
+  /* 退出选项：不给浏览器弹窗，就在原地给两个明确的选择。
+     尺寸、圆角、字号沿用站里已有的按钮语言；窄屏两行排布，不挤成一团。 */
+  const exitPanel = (
+    <m.div {...anim} className="mb-6 card-static rounded-[var(--radius-md)] px-4 sm:px-5 py-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-[var(--ink)]">退出后，已选的答案要留着吗？</p>
+          <p className="mt-1.5 text-xs leading-relaxed text-[var(--ink-tertiary)]">
+            留着就回试金石点「继续」接着答；八字填的生日时辰、起卦数字也一起留着。
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setExitChoice(false)}
+          className="flex-none text-[11px] font-mono text-[var(--ink-tertiary)] hover:text-[var(--accent)] transition-colors"
+        >
+          继续
+        </button>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={keepAndExit}
+          className="px-5 py-2.5 rounded-full bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity active:scale-[0.97]"
+        >
+          保存答案
+        </button>
+        <button
+          type="button"
+          onClick={discardAndExit}
+          className="px-5 py-2.5 rounded-full border border-[var(--hairline-strong)] text-sm text-[var(--ink-muted)] hover:text-[var(--ink)] hover:border-[var(--ink-subtle)] transition-colors"
+        >
+          清空答案
+        </button>
+      </div>
+    </m.div>
+  )
+
   return (
-    <div className="max-w-2xl mx-auto">
+    <div ref={hubRef} className="max-w-2xl mx-auto">
       <AnimatePresence mode="wait">
         {view === 'hub' && (
           <m.div key="hub" {...anim} className="grid sm:grid-cols-2 gap-5">
+            {savedList.length > 0 && (
+              <div className="sm:col-span-2 card-static rounded-[var(--radius-md)] px-4 sm:px-5 py-4 flex flex-col gap-3">
+                <p className="text-[10px] font-mono tracking-[0.2em] text-[var(--ink-tertiary)]">
+                  上次没做完 · 答案都还在
+                </p>
+                {savedList.map((e) => (
+                  <div key={e.test} className="flex items-center justify-between gap-3">
+                    {/* 两行结构：标题一行、等宽元信息一行，320px 窄屏也不会挤成一坨 */}
+                    <button type="button" onClick={() => resume(e)} className="group min-w-0 flex-1 text-left">
+                      <span className="block text-sm font-medium text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors truncate">
+                        {PLAY_LABEL[e.test]}
+                        <span aria-hidden className="ml-1.5 text-[var(--accent)]">→</span>
+                      </span>
+                      <span className="block mt-0.5 text-[11px] font-mono tracking-wide text-[var(--ink-tertiary)]">
+                        继续 · {playEntryHint(e)}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        dropProgress(e.test)
+                        setSaved(readProgress())
+                      }}
+                      aria-label={`清除${PLAY_LABEL[e.test]}的进度`}
+                      className="flex-none px-2 py-1 text-[11px] font-mono text-[var(--ink-tertiary)] hover:text-[var(--accent)] transition-colors"
+                    >
+                      清除
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <button type="button" onClick={() => setView('tiers')} className="acard text-left p-6 sm:p-7">
               <span className="text-[10px] font-mono tracking-[0.2em] text-[var(--ink-tertiary)]">四档 · 2-30 分钟</span>
               <h2 className="acard-title mt-3">MBTI</h2>
@@ -288,7 +501,7 @@ export function PlayHub() {
                   key={t.id}
                   type="button"
                   onClick={() => start('mbti', t.id)}
-                  className="group text-left px-5 py-4 rounded-xl card-static transition-all duration-200 hover:border-[var(--accent)] active:scale-[0.99] flex items-center justify-between gap-3"
+                  className="group text-left px-5 py-4 rounded-[var(--radius-md)] card-static transition-all duration-200 hover:border-[var(--accent)] active:scale-[0.99] flex items-center justify-between gap-3"
                 >
                   <span>
                     <span className="block text-[15px] font-semibold text-[var(--ink)]">{t.label}</span>
@@ -307,12 +520,13 @@ export function PlayHub() {
           <m.div key="pillar" {...anim}>
             <button
               type="button"
-              onClick={() => setView('hub')}
+              onClick={() => setExitChoice(true)}
               className="flex items-center gap-1.5 text-xs font-mono text-[var(--ink-subtle)] hover:text-[var(--accent)] transition-colors mb-8"
             >
               <ArrowLeft className="w-3.5 h-3.5" aria-hidden />
               返回
             </button>
+            {exitChoice && exitPanel}
             <h2 className="text-2xl font-semibold tracking-[-0.01em] text-[var(--ink)] mb-2">八字 · 日柱与时柱</h2>
             <p className="text-sm text-[var(--ink-subtle)] mb-3 max-w-[50ch]">
               输入公历出生日期（1990 年至今）；知道出生时辰的话一起选上，时柱用五鼠遁推算。
@@ -333,7 +547,7 @@ export function PlayHub() {
                 min="1990-01-01"
                 max={today}
                 onChange={(e) => setBirth(e.target.value)}
-                className="px-4 py-3 rounded-xl text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] outline-none transition-colors duration-200 focus:border-[var(--accent)] max-w-xs"
+                className="px-4 py-3 rounded-[var(--radius-md)] text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] outline-none transition-colors duration-200 focus:border-[var(--accent)] max-w-xs"
               />
               <label htmlFor="pillar-hour" className="text-[11px] font-mono text-[var(--ink-tertiary)]">
                 出生时辰（可选，用于时柱）
@@ -342,7 +556,7 @@ export function PlayHub() {
                 id="pillar-hour"
                 value={hourIdx}
                 onChange={(e) => setHourIdx(Number(e.target.value))}
-                className="px-4 py-3 rounded-xl text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] outline-none transition-colors duration-200 focus:border-[var(--accent)] max-w-xs"
+                className="px-4 py-3 rounded-[var(--radius-md)] text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] outline-none transition-colors duration-200 focus:border-[var(--accent)] max-w-xs"
               >
                 <option value={-1}>不知道 / 不说</option>
                 {BRANCH_HOURS.map((b, i) => (
@@ -369,12 +583,13 @@ export function PlayHub() {
           <m.div key="meihua" {...anim}>
             <button
               type="button"
-              onClick={() => setView('hub')}
+              onClick={() => setExitChoice(true)}
               className="flex items-center gap-1.5 text-xs font-mono text-[var(--ink-subtle)] hover:text-[var(--accent)] transition-colors mb-8"
             >
               <ArrowLeft className="w-3.5 h-3.5" aria-hidden />
               返回
             </button>
+            {exitChoice && exitPanel}
             <h2 className="text-2xl font-semibold tracking-[-0.01em] text-[var(--ink)] mb-2">梅花易数 · 三数起卦</h2>
             <p className="text-sm text-[var(--ink-subtle)] mb-3 max-w-[52ch]">
               心里想一件事，随口报三个数（一至九百九十九）。
@@ -398,7 +613,7 @@ export function PlayHub() {
                   if (e.key === 'Enter') castMeihua()
                 }}
                 placeholder="例如：3 5 7 或 357"
-                className="px-4 py-3 rounded-xl text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
+                className="px-4 py-3 rounded-[var(--radius-md)] text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
               />
               {/* 实时解析预览：让用户确认三个数分到了哪 */}
               <p className="text-xs font-mono text-[var(--ink-tertiary)] h-4" aria-live="polite">
@@ -502,7 +717,7 @@ export function PlayHub() {
             <div className="flex items-center justify-between mb-6">
               <button
                 type="button"
-                onClick={() => setView('hub')}
+                onClick={() => setExitChoice(true)}
                 className="flex items-center gap-1.5 text-xs font-mono text-[var(--ink-subtle)] hover:text-[var(--accent)] transition-colors"
               >
                 <ArrowLeft className="w-3.5 h-3.5" aria-hidden />
@@ -512,6 +727,8 @@ export function PlayHub() {
                 {step + 1} / {total}
               </span>
             </div>
+
+            {exitChoice && exitPanel}
 
             {/* 进度条 */}
             <div className="h-[3px] bg-[var(--surface-2)] rounded-full overflow-hidden mb-6" aria-hidden>
@@ -532,7 +749,7 @@ export function PlayHub() {
                       key={i}
                       type="button"
                       onClick={() => pick(i)}
-                      className="group text-left px-5 py-4 rounded-xl card-static text-sm sm:text-[15px] leading-relaxed text-[var(--ink-muted)] transition-all duration-200 hover:text-[var(--ink)] hover:border-[var(--accent)] active:scale-[0.99] flex items-center gap-3"
+                      className="group text-left px-5 py-4 rounded-[var(--radius-md)] card-static text-sm sm:text-[15px] leading-relaxed text-[var(--ink-muted)] transition-all duration-200 hover:text-[var(--ink)] hover:border-[var(--accent)] active:scale-[0.99] flex items-center gap-3"
                     >
                       <span className="flex-none w-6 h-6 grid place-items-center rounded-md bg-[var(--surface-2)] text-[11px] font-mono text-[var(--ink-tertiary)] group-hover:bg-[var(--accent)] group-hover:text-white transition-colors">
                         {String.fromCharCode(65 + i)}
@@ -561,7 +778,7 @@ export function PlayHub() {
         {view === 'result' && result && test && (
           <m.div key="result" {...anim} className="text-center">
             <p className="text-[10px] font-mono tracking-[0.24em] text-[var(--ink-tertiary)] mb-6">
-              {test === 'mbti' ? `MBTI · ${MBTI_TIERS.find((t) => t.id === tier)!.label}` : test === 'daypillar' ? '八字 · 日柱' : test === 'wuxing' ? '五行问 · 结果' : '你是哪种火 · 结果'}
+              {test === 'mbti' ? `MBTI · ${MBTI_TIERS.find((t) => t.id === tier)?.label ?? 'MBTI'}` : test === 'daypillar' ? '八字 · 日柱' : test === 'wuxing' ? '五行问 · 结果' : '你是哪种火 · 结果'}
             </p>
             <p
               className={`font-display font-semibold text-[var(--ink)] leading-none ${
@@ -580,7 +797,7 @@ export function PlayHub() {
                 <div className="grid grid-cols-4 gap-2 mb-6">
                   {([['年柱', bazi.pillars.year], ['月柱', bazi.pillars.month], ['日柱', bazi.pillars.day], ['时柱', bazi.pillars.hour]] as const).map(
                     ([label, pz]) => (
-                      <div key={label} className="card-static rounded-xl py-3 text-center">
+                      <div key={label} className="card-static rounded-[var(--radius-md)] py-3 text-center">
                         <div className="text-[10px] font-mono text-[var(--ink-tertiary)] mb-1">{label}</div>
                         <div className="font-display text-2xl font-semibold text-[var(--ink)] leading-tight">
                           {pz ? pz.gan : '—'}
@@ -630,7 +847,7 @@ export function PlayHub() {
                 </div>
 
                 {bazi.meihua && (
-                  <div className="card-static rounded-xl p-4 mb-2">
+                  <div className="card-static rounded-[var(--radius-md)] p-4 mb-2">
                     <p className="text-[11px] font-mono text-[var(--ink-tertiary)] mb-2">
                       梅花易数 · 时间起卦（趣味参考）
                     </p>
@@ -725,7 +942,15 @@ export function PlayHub() {
             )}
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-              {test !== 'daypillar' && (
+              {test === 'daypillar' ? (
+                <button
+                  type="button"
+                  onClick={() => setView('pillar')}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[var(--hairline-strong)] text-sm text-[var(--ink-muted)] hover:text-[var(--ink)] hover:border-[var(--ink-subtle)] transition-colors"
+                >
+                  改生日 / 时辰
+                </button>
+              ) : (
                 <>
                   <button
                     type="button"
@@ -769,7 +994,13 @@ export function PlayHub() {
         >
           <p className="text-sm text-white/90 font-mono">长按图片保存 · 点空白处关闭</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={overlay} alt="测试报告" className="max-h-[70vh] max-w-full rounded-lg shadow-2xl" />
+          {/* 点图片不能冒泡到遮罩的关闭：否则 APP 里刚按住想保存，层就没了 */}
+          <img
+            src={overlay}
+            alt="测试报告"
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[70vh] max-w-full rounded-lg shadow-2xl"
+          />
           <button
             type="button"
             onClick={() => setOverlay('')}

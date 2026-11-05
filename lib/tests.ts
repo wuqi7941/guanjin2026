@@ -220,10 +220,13 @@ export const MBTI_BANK: MbtiQuestion[] = [
   { q: '计划里的空白时间', a: { text: '也排好了用途', dim: 'J' }, b: { text: '空白就是用来浪费的', dim: 'P' } },
   { q: '别人眼中的你做事', a: { text: '有板有眼', dim: 'J' }, b: { text: '随缘但神奇地成了', dim: 'P' } },
   { q: '截止日期前一周', a: { text: '已经交了', dim: 'J' }, b: { text: '刚打开文档', dim: 'P' } },
-  { q: ' 「随机应变」是你的', a: { text: '被动技能', dim: 'J' }, b: { text: '主修课程', dim: 'P' } },
+  { q: '「随机应变」是你的', a: { text: '被动技能', dim: 'J' }, b: { text: '主修课程', dim: 'P' } },
+  { q: '周末清晨醒来', a: { text: '按昨晚写好的安排走', dim: 'J' }, b: { text: '看心情再决定', dim: 'P' } },
 ]
 
-/* 四档：count = 每个维度抽几题（4×4=16 / 8×4=32 / 12×4=48 / 50×4=200） */
+/* 四档：count = 每组抽几题（题库按 E/I、S/N、T/F、J/P 四组组织，
+   一道题的两个选项分别落在对立维度上；4×count = 总题数）。
+   J/P 组此前只有 49 题，深挖档实际出 199 道，已补齐第 50 道。 */
 export const MBTI_TIERS = [
   { id: 'quick', label: '速测', count: 4, tag: '16 题 · 约 2 分钟' },
   { id: 'std', label: '标准', count: 8, tag: '32 题 · 约 5 分钟' },
@@ -233,9 +236,12 @@ export const MBTI_TIERS = [
 
 export type MbtiTier = (typeof MBTI_TIERS)[number]['id']
 
-/* 按档位组一套题：每维度随机抽 count 题，再按维度交错排列（相邻题不同维度） */
+/* 按档位组一套题：每组随机抽 count 道，再按组交错（相邻题不同组）。
+   pool 只按 q.a.dim 分组——q.b.dim 是它的对立维度，不单独占一组；
+   order 里保留八个键，空组由 if (q) 跳过（将来题库按八维度拆分也不用改这里）。 */
 export function buildMbtiSet(tier: MbtiTier, rand: () => number = Math.random): MbtiQuestion[] {
-  const perDim = MBTI_TIERS.find((t) => t.id === tier)!.count
+  /* 档位可能来自本机存档：非法值不该让整套出题崩掉，退回标准档 */
+  const perDim = MBTI_TIERS.find((t) => t.id === tier)?.count ?? 8
   const byDim: Record<string, MbtiQuestion[]> = { E: [], I: [], S: [], N: [], T: [], F: [], J: [], P: [] }
   const pool: Record<string, MbtiQuestion[]> = { E: [], I: [], S: [], N: [], T: [], F: [], J: [], P: [] }
   for (const q of MBTI_BANK) {
@@ -1065,6 +1071,7 @@ export function parseMeihuaInput(raw: string): [number, number, number] | null {
   } else {
     return null
   }
-  if (nums.length !== 3 || nums.some((n) => !Number.isFinite(n) || n <= 0)) return null
+  /* 页面写的是「一至九百九十九」，校验要跟文案一致：>999 也别悄悄收下 */
+  if (nums.length !== 3 || nums.some((n) => !Number.isFinite(n) || n <= 0 || n > 999)) return null
   return [nums[0], nums[1], nums[2]]
 }

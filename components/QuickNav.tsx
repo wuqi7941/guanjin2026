@@ -14,8 +14,8 @@ const MAP: Record<string, { href: string; label: string }> = {
   c: { href: '/contact/', label: '联系' },
 }
 
-/* 提示由 MAP 派生，别再手写一份对不上的清单 */
-const HINT = ['h', 'b', 't', 's', 'f'].map((k) => ({ key: k, label: MAP[k].label }))
+/* 提示由 MAP 全量派生：先前只手写列了 5 个，g a / g c 能跳却没人知道 */
+const HINT = Object.entries(MAP).map(([key, item]) => ({ key, label: item.label }))
 
 const ARM_MS = 1200
 

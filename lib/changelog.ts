@@ -10,6 +10,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-11-05',
+    title: '试金石更好用了：进来就看见题目，答案也不会丢',
+    items: [
+      '每次点进一个测试、翻到下一题，都会自动回到题目开头，不用再自己往上划',
+      '退出时可选「保存答案」或「清空答案」；存过的进度留在试金石首页，点「继续」就能接着答',
+      '八字填过的生日时辰、起过的卦，算完结果也不会被清掉；结果页可以直接改生日时辰重排',
+      'MBTI 深挖档补齐到 200 题；四篇琴谱文章不再显示成文件名，有了自己的标题',
+      '搜索、快捷键提示、播放器、评论区的一批小毛病一并收干净了',
+    ],
+  },
+  {
     date: '2026-11-02',
     title: '评论区更简单了：留言时可以署上自己的名字',
     items: [
@@ -289,7 +300,7 @@ export const CHANGELOG: ChangelogEntry[] = [
 
 /* 显式版本号：同一天可以有多条记录，靠它区分「看过哪一版」。
    加新条目时手动改这里（消费方是 ChangelogPanel 的首次来访提示）。 */
-export const CHANGELOG_VERSION = '2026-11-03-ui'
+export const CHANGELOG_VERSION = '2026-11-05-play'
 
 /* 同一天的多条记录合并为一条展示（一天只一张纸）：
    title 取当天首条，items 顺次拼接。原始 CHANGELOG 保持录入粒度不变。 */

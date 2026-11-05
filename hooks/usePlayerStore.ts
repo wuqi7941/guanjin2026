@@ -302,7 +302,11 @@ export function usePlayerStore() {
     try {
       const raw = localStorage.getItem(LS_KEY)
       if (raw) {
-        const o = JSON.parse(raw)
+        /* JSON.parse 成功不等于形状对：null / 数组 / 字符串都会让下面的 o.v 抛错，
+           整个播放器状态恢复被 catch 静默吞掉。先验对象再读字段。 */
+        const parsed: unknown = JSON.parse(raw)
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return
+        const o = parsed as Record<string, unknown>
         if (typeof o.v === 'number' && o.v >= 0 && o.v <= 1) {
           volRef.current = o.v
           setVol(o.v)
@@ -320,7 +324,7 @@ export function usePlayerStore() {
           setIdx(restoreIdx)
           /* 不设 src、不 load：GD 直链有时效，等用户点播放时再解析。
              进度先记进 restoreTimeRef，metadata 到达后由 onAudioLoadedMetadata 统一 seek。 */
-          restoreTimeRef.current = o.t || 0
+          restoreTimeRef.current = typeof o.t === 'number' && Number.isFinite(o.t) && o.t > 0 ? o.t : 0
           const a = audioRef.current
           if (a) {
             a.preload = 'none'
@@ -488,7 +492,10 @@ export function usePlayerStore() {
       if (cur && e.currentTarget.currentTime > 60) {
         try {
           const raw = localStorage.getItem('embers_played_ids')
-          const ids: number[] = raw ? JSON.parse(raw) : []
+          const parsedIds: unknown = raw ? JSON.parse(raw) : []
+          const ids: number[] = Array.isArray(parsedIds)
+            ? parsedIds.filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
+            : []
           if (!ids.includes(cur.id)) {
             ids.push(cur.id)
             localStorage.setItem('embers_played_ids', JSON.stringify(ids))

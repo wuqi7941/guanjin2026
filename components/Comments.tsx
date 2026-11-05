@@ -16,6 +16,8 @@ interface Reply {
   t: string
   d: number
   avatar?: number
+  /* 云端 id 唯一；时间戳 d 可能同毫秒撞车，不能当主键 */
+  id?: number
 }
 
 interface CommentItem {
@@ -56,6 +58,24 @@ const AVATARS: Array<{ emoji: string; color: string }> = [
 const NAME_KEY = 'embers_cmt_name'
 const AVATAR_KEY = 'embers_cmt_avatar'
 const NAME_MAX = 12
+
+/* localStorage 是外部输入：旧值可能被手改、被别的脚本写成数组或字符串。
+   直接 JSON.parse 后当对象用，轻则删除凭据存不上，重则「删除自己的评论」整体失效。 */
+function readSecretMap(key: string): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return {}
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof v === 'string') out[k] = v
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
 
 function hashStr(s: string): number {
   let h = 0
@@ -172,8 +192,7 @@ export function Comments({ slug }: { slug: string }) {
 
   const rememberSecret = (id: number, secret: string) => {
     try {
-      const raw = localStorage.getItem(SECRETS_KEY)
-      const map: Record<string, string> = raw ? JSON.parse(raw) : {}
+      const map = readSecretMap(SECRETS_KEY)
       map[String(id)] = secret
       localStorage.setItem(SECRETS_KEY, JSON.stringify(map))
       setSecrets(map)
@@ -191,7 +210,7 @@ export function Comments({ slug }: { slug: string }) {
     for (const f of flat) {
       const item: CommentItem = { n: f.name, t: f.body, d: f.createdAt, r: [], id: f.id, avatar: f.avatar }
       const parent = f.replyTo ? byId.get(f.replyTo) : undefined
-      if (parent) parent.r.push({ n: item.n, t: item.t, d: item.d, avatar: item.avatar ?? undefined })
+      if (parent) parent.r.push({ n: item.n, t: item.t, d: item.d, avatar: item.avatar ?? undefined, id: item.id })
       else top.push(item)
       byId.set(f.id, item)
     }
@@ -217,7 +236,7 @@ export function Comments({ slug }: { slug: string }) {
         if (cancelled) return
         setItems(toTree((j.comments ?? []) as CloudComment[]))
         try {
-          setSecrets(JSON.parse(localStorage.getItem(SECRETS_KEY) || '{}'))
+          setSecrets(readSecretMap(SECRETS_KEY))
         } catch {
           /* ignore */
         }
@@ -284,7 +303,7 @@ export function Comments({ slug }: { slug: string }) {
       setErr('先挑一个头像，再说话')
       return
     }
-    const parent = items.find((c) => c.d === d)
+    const parent = items.find((c) => (c.id ?? c.d) === d)
     if (!parent?.id) {
       setErr('要回复的评论已不存在')
       return
@@ -307,7 +326,7 @@ export function Comments({ slug }: { slug: string }) {
         noteChatter()
         setItems((prev) =>
           prev.map((c) =>
-            c.d === d ? { ...c, r: [...c.r, { n: j.name, t: j.body, d: j.createdAt, avatar: j.avatar }] } : c,
+            (c.id ?? c.d) === d ? { ...c, r: [...c.r, { n: j.name, t: j.body, d: j.createdAt, avatar: j.avatar, id: j.id }] } : c,
           ),
         )
         setReplyingTo(null)
@@ -318,7 +337,7 @@ export function Comments({ slug }: { slug: string }) {
   }
 
   const remove = (d: number) => {
-    const target = items.find((c) => c.d === d)
+    const target = items.find((c) => (c.id ?? c.d) === d)
     const secret = target?.id ? secrets[String(target.id)] : undefined
     if (!target?.id || !secret) {
       setErr('删除失败')
@@ -327,7 +346,7 @@ export function Comments({ slug }: { slug: string }) {
     fetch(`/api/comments?id=${target.id}&secret=${encodeURIComponent(secret)}`, { method: 'DELETE' })
       .then((r) => {
         if (!r.ok) setErr('删除失败')
-        else setItems((prev) => prev.filter((c) => c.d !== d))
+        else setItems((prev) => prev.filter((c) => (c.id ?? c.d) !== d))
       })
       .catch(() => setErr('网络不通，稍后再试'))
   }
@@ -498,8 +517,11 @@ export function Comments({ slug }: { slug: string }) {
                 {items.map((c) => {
                   /* 新评论用选定的头像；旧数据（无 avatar 字段）按名字哈希兜底 */
                   const av = typeof c.avatar === 'number' && AVATARS[c.avatar] ? AVATARS[c.avatar] : avatarOf(c.n)
+                  /* 主键用云端 id：两条评论同一毫秒创建时时间戳会撞，
+                     回复 / 删除就会落到错的那条上 */
+                  const uid = c.id ?? c.d
                   return (
-                <m.li key={c.d} layout={reduce ? undefined : true} {...anim} className="flex gap-3.5">
+                <m.li key={uid} layout={reduce ? undefined : true} {...anim} className="flex gap-3.5">
                   <span
                     aria-hidden
                     className="flex-none w-10 h-10 grid place-items-center rounded-xl text-lg shadow-sm"
@@ -533,7 +555,7 @@ export function Comments({ slug }: { slug: string }) {
                             <span className="flex-1" />
                             <button
                               type="button"
-                              onClick={() => replyTo(c.d)}
+                              onClick={() => replyTo(uid)}
                               aria-label="回复这条留言"
                               className="-my-1 px-1.5 py-1.5 flex items-center gap-1 text-[11px] font-mono text-[var(--ink-subtle)] hover:text-[var(--accent)] transition-colors duration-200"
                             >
@@ -541,12 +563,12 @@ export function Comments({ slug }: { slug: string }) {
                               回复
                             </button>
                         {/* 只给自己的留言显示删除（凭发评时领到的 secret） */}
-                        {!ownSecret(c) ? null : confirmDel === c.d ? (
+                        {!ownSecret(c) ? null : confirmDel === uid ? (
                           <span className="flex items-center gap-2" role="group" aria-label="确认删除">
                             <button
                               type="button"
                               onClick={() => {
-                                remove(c.d)
+                                remove(uid)
                                 setConfirmDel(null)
                               }}
                               className="text-[11px] font-mono text-[var(--accent)] hover:opacity-80 transition-opacity duration-200"
@@ -564,7 +586,7 @@ export function Comments({ slug }: { slug: string }) {
                         ) : (
                           <button
                             type="button"
-                            onClick={() => setConfirmDel(c.d)}
+                            onClick={() => setConfirmDel(uid)}
                             aria-label="删除这条留言"
                             className="flex items-center gap-1 text-[11px] font-mono text-[var(--ink-tertiary)] hover:text-[var(--accent)] transition-colors duration-200"
                           >
@@ -584,7 +606,7 @@ export function Comments({ slug }: { slug: string }) {
                               const rav =
                                 typeof x.avatar === 'number' && AVATARS[x.avatar] ? AVATARS[x.avatar] : avatarOf(x.n)
                           return (
-                            <li key={x.d} className="flex gap-2.5">
+                            <li key={x.id ?? x.d} className="flex gap-2.5">
                               <span
                                 aria-hidden
                                 className="flex-none w-6 h-6 grid place-items-center rounded-lg text-xs"
@@ -615,26 +637,26 @@ export function Comments({ slug }: { slug: string }) {
                     )}
 
                     <AnimatePresence>
-                      {replyingTo === c.d && (
+                      {replyingTo === uid && (
                         <m.form
                           {...anim}
                           onSubmit={(e) => {
                             e.preventDefault()
-                            submitReply(c.d)
+                            submitReply(uid)
                           }}
                           className="mt-2.5 ml-4 flex gap-2 items-start"
                         >
-                          <label htmlFor={`cmt-reply-${c.d}`} className="sr-only">
+                          <label htmlFor={`cmt-reply-${uid}`} className="sr-only">
                             回复内容
                           </label>
                           <input
-                            id={`cmt-reply-${c.d}`}
+                            id={`cmt-reply-${uid}`}
                             value={replyText}
                             onChange={(e) => setReplyText(e.target.value)}
                             onKeyDown={(e) => {
                               if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                                 e.preventDefault()
-                                submitReply(c.d)
+                                submitReply(uid)
                               }
                             }}
                             maxLength={200}
