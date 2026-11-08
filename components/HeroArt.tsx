@@ -7,7 +7,6 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, m, useReducedMotion } from 'framer-motion'
 import { Expand, X } from 'lucide-react'
 import { PianoKeyboard } from './PianoKeyboard'
-import { useInView } from '@/hooks/useInView'
 import { lockScroll } from '@/lib/scrollLock'
 
 
@@ -38,8 +37,9 @@ export function HeroArt() {
   const reduce = !!useReducedMotion()
   const [mode, setMode] = useState<typeof MODES[number]>('photo')
   const [fullOpen, setFullOpen] = useState(false)
-  /* 离开视口：停动画，回来恢复 */
-  const { ref: rootRef, inView } = useInView<HTMLDivElement>({ once: false, threshold: 0.05 })
+  /* 这里原本解构了 useInView 的 inView 却从没用过，注释还写着「离开视口停动画」——
+     照片与琴键都只有一次性入场，本来就没有常驻动画可停。删掉空的观察器，
+     别让下一个人以为这里已经有视口管理了。 */
 
   /* 全屏打开时锁滚动 + Esc 关闭 + 焦点进出 dialog */
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -61,7 +61,7 @@ export function HeroArt() {
   }, [fullOpen])
 
   return (
-    <div ref={rootRef} className="relative w-full" style={{ aspectRatio: '440 / 500' }}>
+    <div className="relative w-full" style={{ aspectRatio: '440 / 500' }}>
       <button
         type="button"
         onClick={() => setMode((m) => (m === 'photo' ? 'piano' : 'photo'))}

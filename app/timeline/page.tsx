@@ -10,7 +10,7 @@ export const metadata = {
   alternates: { canonical: '/timeline/' },
 }
 
-/* 火的年轮：把 211 篇按月份排开，柱子的长短就是那个月写了多少。
+/* 火的年轮：把全部文章按月份排开（数量从 lib/posts.json 实时算，不要在注释里写死），柱子的长短就是那个月写了多少。
    没有花哨交互，只有时间和密度——这张图本身就是一个作品。 */
 export default function TimelinePage() {
   const posts = getAllPosts().map(toCard)

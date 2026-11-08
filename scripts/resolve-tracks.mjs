@@ -209,6 +209,15 @@ async function playable(id) {
   const all = [...existing.map(([t, a, id]) => ({ t, a, id })), ...added]
 
   const lines2 = all.map((x) => `  { t: ${JSON.stringify(x.t)}, a: ${JSON.stringify(x.a)}, id: ${x.id} },`)
+
+  /* 只重写曲目数组，文件尾部的音源函数（TRACK_URL / GD_URL / gdTrackUrl / META_URL）
+     原样保留。上一版模板只写了三个常量、没有 GD_URL 与 gdTrackUrl，
+     重新生成一次 usePlayerStore 就编译不过——模板和实现必须同源。 */
+  const srcPath = path.join(ROOT, 'lib', 'playlist.ts')
+  const src = fs.readFileSync(srcPath, 'utf8')
+  const tailMatch = src.search(/^\s*\]\s*$/m)
+  const tail = tailMatch >= 0 ? src.slice(tailMatch + src.slice(tailMatch).indexOf(']') + 1) : '\n'
+
   const out = `export interface Track {
   t: string
   a: string
@@ -217,16 +226,11 @@ async function playable(id) {
   v?: 1
 }
 
-/* 曲库：搜索走 GD Studio（免会员、免 key），播放走 meting 的 302 直链。
-   加歌时跑 scripts/resolve-tracks.mjs 重新生成，别手抄 ID。 */
+/* 曲库：搜索走 GD Studio（免会员、免 key）；播放主源是 GD 的 JSONP 直链，
+   失败依次退 meting 与网易官方外链。加歌时跑 scripts/resolve-tracks.mjs 重新生成，别手抄 ID。 */
 export const PLAYLIST: Track[] = [
 ${lines2.join('\n')}
-]
-
-export const TRACK_URL = (id: number) => \`https://api.injahow.cn/meting/?type=url&id=\${id}\`
-export const NETEASE_URL = (id: number) => \`https://music.163.com/song/media/outer/url?id=\${id}.mp3\`
-export const META_URL = (id: number) => \`https://api.injahow.cn/meting/?type=song&id=\${id}\`
-`
+]${tail}`
 
   if (!process.argv.includes('--apply')) {
     console.log('\n(dry run) 总曲目', all.length)

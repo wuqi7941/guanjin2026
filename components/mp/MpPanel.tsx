@@ -49,18 +49,38 @@ export function MpPanel({
 }: MpPanelProps) {
   const closeRef = useRef<HTMLButtonElement>(null)
 
-  /* 手机端面板是全屏的，锁住背后滚动；桌面端是浮窗，页面照常可滚 */
+  /* 手机端面板是全屏的，锁住背后滚动；桌面端是浮窗，页面照常可滚。
+     原实现只在挂载时判断一次断点：中途把窗口缩到手机宽度，
+     面板已经全屏却没有锁滚动；反过来从手机拉宽，锁也解不掉。 */
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (!window.matchMedia('(max-width: 639px)').matches) return
-    return lockScroll()
+    const mq = window.matchMedia('(max-width: 639px)')
+    let unlock: (() => void) | null = null
+    const sync = () => {
+      if (mq.matches && !unlock) unlock = lockScroll()
+      else if (!mq.matches && unlock) {
+        unlock()
+        unlock = null
+      }
+    }
+    sync()
+    mq.addEventListener('change', sync)
+    return () => {
+      mq.removeEventListener('change', sync)
+      unlock?.()
+    }
   }, [])
 
-  /* dialog 语义补全：打开时焦点进面板（交给关闭钮），关闭时还原到触发元素 */
+  /* dialog 语义补全：打开时焦点进面板（交给关闭钮），关闭时还原到触发元素。
+     触发元素可能已经被卸载（面板一开，条子上的按钮会被替换），
+     这时直接 focus() 会落在 body 上，键盘用户等于被扔回页面顶部。 */
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null
     closeRef.current?.focus()
-    return () => opener?.focus?.()
+    return () => {
+      if (opener && opener.isConnected) opener.focus?.()
+      else document.querySelector<HTMLElement>('.mp-bar-text')?.focus?.()
+    }
   }, [])
 
   return (

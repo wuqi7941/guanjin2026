@@ -15,7 +15,9 @@ const CONTACT_UPDATED = '2026-08-01'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const posts = getAllPosts()
-  const latest = posts[0]?.date ?? '2026-01-01'
+  /* posts[0] 是置顶的《攒一架琴》（数据日期 2026-08-19），
+     拿它当全站 lastModified 会让 7 个静态页永远比真实最新日期旧两个多月。 */
+  const latest = posts.reduce((max, p) => (p.date > max ? p.date : max), '2026-01-01')
   const at = (d: string) => new Date(d)
 
   return [

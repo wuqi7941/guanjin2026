@@ -9,7 +9,10 @@ export function getAudioCtx(): AudioContext | null {
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
     if (!ctx) ctx = new Ctor()
-    if (ctx.state === 'suspended') void ctx.resume()
+    /* resume() 返回 Promise：在 fetch 回调里调用时已经脱离用户手势，
+       会被浏览器拒绝成 NotAllowedError。原来是 void 掉、没有任何 catch，
+       控制台每次发评论都会多一条未处理的 Promise 拒绝。 */
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {})
     return ctx
   } catch {
     return null

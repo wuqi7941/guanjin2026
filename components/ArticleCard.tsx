@@ -26,7 +26,9 @@ function paperAge(date: string): number {
   const a = Date.parse(OLDEST)
   const b = Date.parse(NEWEST)
   if (!isFinite(t) || b === a) return 0
-  return Math.min(1, Math.max(0, (t - a) / (b - a)))
+  /* --paper-age 的语义是「0 新 → 1 旧」，而日期越大越新。
+     原来直接返回 (t - a) / (b - a)，等于越新的文章纸越黄，和 CSS 注释正好相反。 */
+  return Math.min(1, Math.max(0, 1 - (t - a) / (b - a)))
 }
 
 export function ArticleCard({ post, index = 0 }: ArticleCardProps) {

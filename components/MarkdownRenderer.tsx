@@ -100,6 +100,10 @@ export function MarkdownRenderer({ content, variant = 'default' }: MarkdownRende
       <ReactMarkdown
         rehypePlugins={[rehypeHighlight]}
         components={{
+          /* 正文中间的 `#` 也交给 Heading：以前只有全文第一行的 H1 被剥掉，
+             中间出现的 `# xxx` 会渲染成一个裸 h1（没有 id、也没有本站在用的字号），
+             一个页面出现两个 H1 对 SEO 也是减分项。 */
+          h1: (props) => <Heading level={2} {...props} />,
           h2: (props) => <Heading level={2} {...props} />,
           h3: (props) => <Heading level={3} {...props} />,
           h4: (props) => <Heading level={4} {...props} />,

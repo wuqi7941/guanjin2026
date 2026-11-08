@@ -2,17 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-@import 'highlight.js/styles/github-dark.css';
-
-/* 隐藏滚动条的横向滚动容器（标签单行） */
-.no-scrollbar {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
+/* 这里原本有一行 `@import 'highlight.js/styles/github-dark.css';`
+   两个问题：① @import 必须排在所有规则之前，写在这儿浏览器直接丢弃；
+   ② 就算生效，它是一套 GitHub 暗色配色，和下面 .hljs 的纸感配色打架。
+   代码高亮只认本文件里那一套（--code-* 变量），不引第三方主题。 */
 
 /* 无障碍：跳到主内容（仅聚焦时出现） */
 .skip-link {
@@ -120,7 +113,7 @@
 
 /* ============ 代码高亮（hljs 纸感配色） ============ */
 :root {
-  --code-key: #c4634a;
+  --code-key: var(--accent);
   --code-str: #a8945a;
   --code-num: #c9a86a;
   --code-fn: #ece3d6;
@@ -128,7 +121,6 @@
 }
 
 .light {
-  --code-key: #9e3b2e;
   --code-str: #6b6a2e;
   --code-num: #8a6a2e;
   --code-fn: #221b13;
@@ -304,17 +296,22 @@ button,
   --ink-muted: #b0a18c;    /* 7.33:1 */
   --ink-subtle: #958774;   /* 5.28:1（卡片上 4.60:1）*/
   --ink-tertiary: #978771; /* 5.30:1（卡片上 4.62:1）— 与 subtle 拉开对比度而非仅靠明度 */
-  --accent: #b7583f;       /* 朱印红：压深至白字达 4.63:1（原 #c4634a 仅 4.01:1）*/
+  --accent-rgb: 183 88 63;  /* 朱印红的分量形式，供 rgb(... / α) 复用 */
+  --accent-deep-rgb: 143 61 44; /* 同色相压深一档：火根、渐变暗端 */
+  --accent: rgb(var(--accent-rgb));       /* 朱印红：压深至白字达 4.63:1 */
   --accent-hover: #c96a4d;
-  --accent-soft: rgba(183, 88, 63, 0.12);
-  --ember: #c4634a;
-  --ember-soft: rgba(196, 99, 74, 0.1);
-  --fire-top: #c4634a;
-  --fire-bot: #8f3d2c;
-  --halo: rgba(196, 99, 74, 0.08);
+  --accent-soft: rgb(var(--accent-rgb) / 0.12);
+  /* 单强调色纪律：以下五个名字是历史遗留的「第二套暖色」，
+     全部指向 --accent，不再各自养一个十六进制值。
+     要调整朱印，只改上面的 --accent-rgb / --accent-deep-rgb。 */
+  --ember: var(--accent);
+  --ember-soft: rgb(var(--accent-rgb) / 0.1);
+  --fire-top: var(--accent);
+  --fire-bot: rgb(var(--accent-deep-rgb));
+  --halo: rgb(var(--accent-rgb) / 0.09);
   --ember-ash: #8a7560;
-  --sun-a: #c4634a;
-  --sun-b: #8f3d2c;
+  --sun-a: var(--accent);
+  --sun-b: rgb(var(--accent-deep-rgb));
   --radius-sm: 2px;
   --radius-md: 3px;
   --radius-lg: 4px;
@@ -325,7 +322,8 @@ button,
 }
 
 .light {
-  /* 宣纸：米白纸底，墨色字，朱印为唯一强调（默认） */
+  /* 宣纸：米白纸底，墨色字，朱印为唯一强调。
+     默认主题是 system：系统深色时用上面的夜墨，浅色时才落在这里 */
   --canvas: #f2ece1;
   --surface-1: #faf5ea;
   --surface-2: #efe7d8;
@@ -337,17 +335,19 @@ button,
   --ink-muted: #5a4d3d;    /* 6.97:1 */
   --ink-subtle: #695a49;   /* 5.65:1（卡片上 5.41:1）*/
   --ink-tertiary: #776754; /* 4.64:1（卡片上 4.44:1，大字达标）*/
-  --accent: #9e3b2e; /* 朱印红：白字 6.73:1，达标 */
+  --accent-rgb: 158 59 46;      /* 宣纸上的朱印要更深，白字才够 6.73:1 */
+  --accent-deep-rgb: 126 47 34;
+  --accent: rgb(var(--accent-rgb));
   --accent-hover: #b14a36;
-  --accent-soft: rgba(158, 59, 46, 0.1);
-  --ember: #9e3b2e;
-  --ember-soft: rgba(158, 59, 46, 0.09);
-  --fire-top: #9e3b2e;
-  --fire-bot: #7e2f22;
-  --halo: rgba(158, 59, 46, 0.07);
+  --accent-soft: rgb(var(--accent-rgb) / 0.1);
+  --ember: var(--accent);
+  --ember-soft: rgb(var(--accent-rgb) / 0.09);
+  --fire-top: var(--accent);
+  --fire-bot: rgb(var(--accent-deep-rgb));
+  --halo: rgb(var(--accent-rgb) / 0.07);
   --ember-ash: #9c7a5c;
-  --sun-a: #9e3b2e;
-  --sun-b: #7e2f22;
+  --sun-a: var(--accent);
+  --sun-b: rgb(var(--accent-deep-rgb));
   --radius-sm: 2px;
   --radius-md: 3px;
   --radius-lg: 4px;
@@ -403,18 +403,24 @@ body {
 .index-num {
   font-family: var(--font-mono) !important;
   font-size: 0.68rem;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   color: var(--accent);
 }
 
+/* 选中文字：纸上的朱砂。全站只此一处——
+   color-mix 在 X5 内核上是空值，先用 --accent-soft 兜底再增强。 */
 ::selection {
-  background-color: var(--accent);
-  color: #fff;
+  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+  color: var(--ink);
 }
 
+/* 键盘焦点环：全站只此一处。原来散在四处的 outline-offset 2px/3px 打架，
+   最后一条生效，等于前面三条都是废的。 */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
+  border-radius: 3px;
 }
 
 /* ============ 噪点底纹（印刷颗粒，低耗） ============ */
@@ -438,8 +444,13 @@ html:not(.scrolling) .grain::after {
   animation: grain-breathe 5s ease-in-out infinite;
 }
 
-/* 触屏/移动端：噪点静止，节省合成层开销 */
+/* 触屏/移动端：噪点静止，省掉合成层开销。
+   原来这条 @media 是空壳，注释承诺「触屏噪点静止」却没写规则，
+   手机上 grain-breathe 一直在跑。 */
 @media (pointer: coarse) {
+  .grain::after {
+    animation: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -451,8 +462,8 @@ html:not(.scrolling) .grain::after {
 /* ============ 背景：侘寂纸感（极淡朱印呼吸，无橙光） ============ */
 .embers-bg {
   background:
-    radial-gradient(70% 45% at 18% -8%, rgba(196, 99, 74, 0.05), transparent 60%),
-    radial-gradient(50% 38% at 88% 102%, rgba(196, 99, 74, 0.03), transparent 58%),
+    radial-gradient(70% 45% at 18% -8%, rgb(var(--accent-rgb) / 0.05), transparent 60%),
+    radial-gradient(50% 38% at 88% 102%, rgb(var(--accent-rgb) / 0.03), transparent 58%),
     var(--canvas);
 }
 
@@ -559,7 +570,7 @@ html:not(.scrolling) .grain::after {
 
 .seal-stamp.is-double {
   font-size: 1.15rem;
-  letter-spacing: 1px;
+  letter-spacing: 0.08em;
 }
 
 /* 得意之作小印：卡角/标题旁的朱印徽记 */
@@ -569,11 +580,13 @@ html:not(.scrolling) .grain::after {
   justify-content: center;
   padding: 0.32rem 0.5rem;
   background: var(--accent);
-  color: var(--surface-1);
+  /* 原为 var(--surface-1)：暗色下就是「深棕字压朱红」，只有 3.8:1。
+     朱印上的字一律用纸白——暗色 4.63:1、浅色 6.73:1，两套主题都过 AA。 */
+  color: #fff;
   font-family: var(--display);
   font-weight: 700;
   font-size: 0.7rem;
-  letter-spacing: 2px;
+  letter-spacing: 0.16em;
   line-height: 1;
   border-radius: 2px;
   transform: rotate(-3deg);
@@ -617,8 +630,8 @@ main img:hover {
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(60% 50% at 15% 0%, rgba(196, 99, 74, 0.05), transparent 62%),
-    radial-gradient(45% 40% at 90% 100%, rgba(196, 99, 74, 0.03), transparent 58%);
+    radial-gradient(60% 50% at 15% 0%, rgb(var(--accent-rgb) / 0.05), transparent 62%),
+    radial-gradient(45% 40% at 90% 100%, rgb(var(--accent-rgb) / 0.03), transparent 58%);
 }
 
 .hero-poster .poster-number {
@@ -626,12 +639,14 @@ main img:hover {
   right: -0.05em;
   bottom: -0.18em;
   font-weight: 600;
-  font-size: clamp(8rem, 30vw, 22rem);
+  /* 22rem 的镂空数字会占到半屏，主角变成编号本身。
+     收到 15rem 上限、透明度再降一档：还是海报，但退到背景层。 */
+  font-size: clamp(6rem, 22vw, 15rem);
   line-height: 0.8;
   letter-spacing: 0.01em;
   color: transparent;
-  -webkit-text-stroke: 1.5px var(--hairline-strong);
-  opacity: 0.3;
+  -webkit-text-stroke: 1.2px var(--hairline-strong);
+  opacity: 0.24;
   pointer-events: none;
   user-select: none;
   z-index: 1;
@@ -673,13 +688,6 @@ main img:hover {
   text-transform: uppercase;
   color: var(--ink-subtle);
 }
-
-.exhibit-excerpt {
-  font-size: 0.95rem;
-  line-height: 1.85;
-  color: var(--ink-muted);
-}
-
 /* 展厅灯光入场（结合 framer-motion variants 的过渡由 JS 控制） */
 
 .card-static {
@@ -843,25 +851,6 @@ html.scrolling .glass-nav {
 .print-only {
   display: none;
 }
-
-/* 横向滚动容器：两端渐隐提示（还有更多分区） */
-.fade-x {
-  mask-image: linear-gradient(
-    90deg,
-    transparent 0,
-    #000 18px,
-    #000 calc(100% - 18px),
-    transparent 100%
-  );
-  -webkit-mask-image: linear-gradient(
-    90deg,
-    transparent 0,
-    #000 18px,
-    #000 calc(100% - 18px),
-    transparent 100%
-  );
-}
-
 /* ============ 区块编号：手写笔意（Cormorant 斜体 + 微倾 + 墨迹浮现） ============ */
 .poster-number {
   font-family: var(--display) !important;
@@ -1149,7 +1138,7 @@ html.scrolling .glass-nav {
 .prose-custom.prose-novel {
   font-size: 1.125rem;
   line-height: 2.12;
-  letter-spacing: 0.016em;
+  letter-spacing: 0.02em;
 }
 .prose-custom.prose-novel p {
   margin: 0 0 1.75rem;
@@ -1300,7 +1289,9 @@ html.scrolling .glass-nav {
     float: right;
     clear: right;
     width: 15.5rem;
-    margin: 0.6rem -17.5rem 1.9rem 2.2rem;
+    /* 原为 -17.5rem：整段被推到正文列外，窄屏直接右溢被裁。
+       收到 -6rem，仍能让首字压出栏外一点，但不越界。 */
+    margin: 0.6rem -6rem 1.9rem 2.2rem;
     padding: 0 0 0 1rem;
     border-left: 2px solid var(--accent);
     background: none;
@@ -1519,24 +1510,23 @@ html.scrolling .glass-nav {
   border: 2px solid var(--accent);
 }
 
-/* Music player equalizer */
+/* Music player equalizer
+   原来动画的是 height（30% ↔ 100%），每帧触发布局重排；
+   改成 scaleY，条形本身固定撑满容器，只动合成层。 */
 @keyframes mp-eq {
-  0%, 100% { height: 30%; }
-  50% { height: 100%; }
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
 }
 
 .mp-eq-bar {
+  height: 100%;          /* 容器定高（h-3 / h-4 / 播放条），条形自己撑满再缩放 */
+  transform-origin: 50% 100%;
   animation: mp-eq 1s ease-in-out infinite;
 }
 
 .mp-eq-bar:nth-child(2) { animation-delay: 0.18s; }
 .mp-eq-bar:nth-child(3) { animation-delay: 0.36s; }
 .mp-eq-bar:nth-child(4) { animation-delay: 0.54s; }
-
-.mp-paused .mp-eq-bar {
-  animation-play-state: paused;
-  height: 30%;
-}
 
 /* ============ REDUCED MOTION ============ */
 @media (prefers-reduced-motion: reduce) {
@@ -1569,17 +1559,6 @@ body {
 
 * { -webkit-overflow-scrolling: touch; } /* iOS 滚动惯性 */
 
-::selection {
-  background: color-mix(in srgb, var(--accent) 26%, transparent);
-  color: var(--ink);
-}
-
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
 /* 电脑端：展品卡悬停由 .photo-tilt 接管（扶正 + 抬起），此处只补光影与标题 */
 
 /* 手机端：避免过宽内边距挤压内容 */
@@ -1606,7 +1585,9 @@ body {
   border-radius: var(--radius-md);
   text-decoration: none;
   overflow: hidden;
-  transition: border-color 0.35s ease, box-shadow 0.35s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  /* 三处 .acard 过渡合并到这里，统一 0.28s（原先 0.35s / 0.45s / 0.28s 三套互相覆盖） */
+  transition: transform 0.28s cubic-bezier(0.22, 1.08, 0.36, 1), box-shadow 0.28s ease,
+    border-color 0.28s ease, background-color 0.28s ease;
 }
 
 /* 角标：悬停时左上浮现朱印短线（沿用 .card 的语言，不新增装饰） */
@@ -1632,7 +1613,9 @@ body {
   .acard:hover {
     transform: translateY(-3px);
     border-color: color-mix(in srgb, var(--accent) 34%, var(--hairline));
-    box-shadow: 0 18px 40px -32px rgba(35, 26, 18, 0.45);
+    /* 纸背透墨 + 抬起投影，原先分在两条 .acard:hover 里后者盖掉前者 */
+    box-shadow: inset 0 0 36px color-mix(in srgb, var(--accent) 8%, transparent),
+      0 18px 40px -32px rgba(35, 26, 18, 0.45);
   }
 
   .acard:hover .acard-title {
@@ -1662,7 +1645,7 @@ body {
   border-bottom: 1px solid var(--hairline);
   font-family: var(--font-mono);
   font-size: 0.62rem;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-subtle);
 }
@@ -1675,7 +1658,7 @@ body {
 .acard-tag {
   margin-left: auto;
   color: var(--ink-tertiary);
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1848,8 +1831,12 @@ body {
 .mp-bar-progress-fill {
   display: block;
   height: 100%;
+  width: 100%;
   background: var(--accent);
-  transition: width 0.25s linear;
+  /* 进度条只动 transform：width 动画每帧都要重排整条播放器 */
+  transform-origin: 0 50%;
+  transform: scaleX(var(--pct, 0));
+  transition: transform 0.25s linear;
 }
 
 .mp-bar-cover {
@@ -1881,12 +1868,13 @@ body {
   position: absolute;
   left: 0;
   right: 0;
+  top: 0;
   bottom: 0;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   gap: 2px;
-  padding: 3px 0;
+  padding: 9px 0 5px;
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.45));
 }
 
@@ -1894,7 +1882,6 @@ body {
   width: 2px;
   border-radius: 2px;
   background: #fff;
-  height: 30%;
 }
 
 .mp-bar-text {
@@ -1972,7 +1959,7 @@ body {
   z-index: 86;
   color: #efe4d6;
   background:
-    radial-gradient(72% 58% at 50% 108%, rgba(196, 99, 74, 0.26), transparent 72%),
+    radial-gradient(72% 58% at 50% 108%, rgb(var(--accent-rgb) / 0.26), transparent 72%),
     radial-gradient(52% 42% at 50% -12%, rgba(150, 108, 82, 0.16), transparent 70%),
     #0a0806;
 }
@@ -2053,7 +2040,9 @@ body {
   letter-spacing: 0.01em;
   color: rgba(239, 228, 214, 0.44);
   transform-origin: center center;
-  transition: color 0.35s ease, font-size 0.35s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  /* 只动颜色与 transform。原先还动画 font-size（1.42rem → 1.92rem），
+     每一帧都触发行高重排，整段歌词会跟着上下抖。 */
+  transition: color 0.35s ease, transform 0.45s cubic-bezier(0.22, 1.08, 0.36, 1);
 }
 
 .mp-full-line:hover {
@@ -2061,10 +2050,9 @@ body {
 }
 
 .mp-full-line.is-active {
-  color: #f2a184;
-  font-size: clamp(1.35rem, 3.4vw, 1.92rem);
-  transform: scale(1.02);
-  text-shadow: 0 0 26px rgba(240, 112, 60, 0.32);
+  color: var(--accent-hover);
+  transform: scale(1.06);
+  text-shadow: 0 0 26px rgb(var(--accent-rgb) / 0.32);
 }
 
 .mp-full-empty {
@@ -2096,7 +2084,7 @@ body {
 
 .mp-full-empty-sub {
   font-size: 0.82rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: rgba(239, 228, 214, 0.42);
 }
 
@@ -2149,7 +2137,7 @@ body {
   left: 0;
   top: 0;
   bottom: 0;
-  background: #e8743f;
+  background: var(--accent);
 }
 
 .mp-full-time {
@@ -2158,7 +2146,7 @@ body {
   margin-top: 0.55rem;
   font-family: var(--font-mono);
   font-size: 0.6rem;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: rgba(239, 228, 214, 0.4);
 }
 
@@ -2188,12 +2176,12 @@ body {
 .mp-full-controls .is-primary {
   width: 3.2rem;
   height: 3.2rem;
-  background: #b7583f;
+  background: var(--accent);
   color: #fff;
 }
 
 .mp-full-controls .is-primary:hover {
-  background: #c96a4d;
+  background: var(--accent-hover);
 }
 
 /* ================================================================
@@ -2268,7 +2256,7 @@ body {
   top: 1rem;
   font-family: var(--font-mono);
   font-size: 0.78rem;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   color: var(--ink-tertiary);
   pointer-events: none;
   transform-origin: left top;
@@ -2342,7 +2330,7 @@ body {
   margin-top: 0.5rem;
   font-family: var(--font-mono);
   font-size: 0.66rem;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   color: var(--ink-tertiary);
 }
 
@@ -2380,7 +2368,7 @@ body {
   margin-top: 0.18rem;
   font-family: var(--font-mono);
   font-size: 0.62rem;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: var(--ink-tertiary);
 }
 
@@ -2410,7 +2398,7 @@ body {
   border-top: 1px solid var(--hairline);
   font-family: var(--font-mono);
   font-size: 0.6rem;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: var(--ink-tertiary);
 }
 
@@ -2455,7 +2443,7 @@ body {
   flex: none;
   font-family: var(--font-mono);
   font-size: 0.6rem;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--accent);
 }
@@ -2617,7 +2605,7 @@ body {
   padding-top: 0.35rem;
   font-family: var(--font-mono);
   font-size: 0.66rem;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: var(--ink-tertiary);
   font-variant-numeric: tabular-nums;
 }
@@ -2654,7 +2642,7 @@ body {
 .egg-where {
   font-family: var(--font-mono);
   font-size: 0.6rem;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: var(--ink-tertiary);
 }
 
@@ -2744,81 +2732,14 @@ body {
   color: var(--ink-tertiary);
 }
 
-/* ---------- B 每日一句 ---------- */
-.daily-band {
-  position: relative;
-  padding: 3.4rem 0 3rem;
-  border-top: 1px solid var(--hairline);
-  border-bottom: 1px solid var(--hairline);
-  background: color-mix(in srgb, var(--surface-1) 38%, transparent);
-  overflow: hidden;
-}
 
-.daily-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1.4rem;
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--ink-subtle);
-}
 
-.daily-source {
-  color: var(--ink-tertiary);
-  letter-spacing: 0.14em;
-  white-space: nowrap;
-  transition: color 0.25s ease;
-}
 
-.daily-source:hover {
-  color: var(--accent);
-}
 
-.daily-text {
-  max-width: 18em;
-  font-family: var(--display);
-  font-size: clamp(1.45rem, 3.5vw, 2.5rem);
-  line-height: 1.52;
-  letter-spacing: 0.01em;
-  color: var(--ink);
-}
 
-.daily-quote {
-  color: var(--accent);
-  opacity: 0.72;
-}
 
-@media (max-width: 639px) {
-  .daily-band {
-    padding: 2.6rem 0 2.3rem;
-  }
-  .daily-text {
-    max-width: 100%;
-  }
-}
-
-/* ---------- C 电影光 ---------- */
-.glow-follow {
-  position: fixed;
-  inset: 0;
-  z-index: 45;
-  pointer-events: none;
-  opacity: 0.85;
-  mix-blend-mode: soft-light;
-  background: radial-gradient(
-    34rem 34rem at var(--glow-x, 50%) var(--glow-y, 28%),
-    color-mix(in srgb, var(--accent) 24%, transparent),
-    transparent 68%
-  );
-}
 
 @media (hover: none), (prefers-reduced-motion: reduce) {
-  .glow-follow {
-    display: none;
-  }
 }
 
 /* 配图显影：只动透明度与缩放，保留既有的 hover 转墨 filter 过渡 */
@@ -2847,237 +2768,11 @@ body {
     padding-bottom: 4.75rem;
   }
 }
-
-/* ================================================================
-   更新记录（关于页）+ 交互手感（2026-10-26）
-   ---------------------------------------------------------------
-   交互原则：按压要"实"（1px 下沉，不用夸张缩放），
-   颜色/边框的过渡统一 0.16–0.26s，别再出现 0.5s 的慢半拍。
-   ================================================================ */
-
-/* ---------- 更新记录 ---------- */
-
-/* 一次性提示：浮在左下角（避开居中的迷你条与右侧回顶按钮） */
-.changelog-toast {
-  position: fixed;
-  left: 1.25rem;
-  bottom: 1.25rem;
-  z-index: 74;
-  width: min(340px, calc(100% - 2.5rem));
-  display: flex;
-  align-items: flex-start;
-  gap: 0.8rem;
-  padding: 0.95rem 1rem;
-  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--hairline));
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  box-shadow: 0 18px 40px -26px rgba(35, 26, 18, 0.5);
-}
-
-.changelog-toast-mark {
-  flex: none;
-  width: 1.75rem;
-  height: 1.75rem;
-  display: grid;
-  place-items: center;
-  border-radius: 2px;
-  background: var(--accent);
-  color: #fff;
-  font-family: var(--display);
-  font-size: 0.9rem;
-  font-weight: 700;
-  transform: rotate(-3deg);
-}
-
-.changelog-toast-body {
-  min-width: 0;
-}
-
-.changelog-toast-title {
-  font-family: var(--display);
-  font-size: 1.02rem;
-  line-height: 1.3;
-  color: var(--ink);
-}
-
-.changelog-toast-sub {
-  margin-top: 0.25rem;
-  font-size: 0.78rem;
-  line-height: 1.7;
-  color: var(--ink-muted);
-}
-
-.changelog-toast-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.7rem;
-}
-
-.changelog-toast-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.38rem 0.7rem;
-  border-radius: var(--radius-md);
-  background: var(--accent);
-  color: #fff;
-  font-size: 0.75rem;
-  transition: background-color 0.16s ease, transform 0.12s ease;
-}
-
-.changelog-toast-primary:hover {
-  background: var(--accent-hover);
-}
-
-.changelog-toast-ghost {
-  padding: 0.38rem 0.6rem;
-  border-radius: var(--radius-md);
-  font-size: 0.75rem;
-  color: var(--ink-subtle);
-  transition: color 0.16s ease, background-color 0.16s ease;
-}
-
-.changelog-toast-ghost:hover {
-  color: var(--ink);
-  background: var(--surface-2);
-}
-
-.changelog-toast-primary:active,
-.changelog-toast-ghost:active {
-  transform: translateY(1px);
-}
-
-@media (max-width: 639px) {
-  .changelog-toast {
-    left: 0.75rem;
-    right: 0.75rem;
-    width: auto;
-    bottom: calc(4.9rem + env(safe-area-inset-bottom));
-  }
-}
-
-.changelog-intro {
-  margin-bottom: 1.6rem;
-  font-size: 0.92rem;
-  line-height: 1.85;
-  color: var(--ink-muted);
-}
-
-.changelog-intro strong {
-  color: var(--ink);
-  font-weight: 600;
-}
-
-.changelog-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.changelog-item {
-  display: grid;
-  grid-template-columns: 6.5rem minmax(0, 1fr);
-  gap: 1.5rem;
-  padding: 1.4rem 0;
-  border-top: 1px solid var(--hairline);
-}
-
-.changelog-item:last-child {
-  border-bottom: 1px solid var(--hairline);
-}
-
-.changelog-date {
-  padding-top: 0.35rem;
-  font-family: var(--font-mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.14em;
-  color: var(--ink-tertiary);
-  font-variant-numeric: tabular-nums;
-}
-
-.changelog-title {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  font-family: var(--display);
-  font-size: 1.18rem;
-  line-height: 1.3;
-  color: var(--ink);
-}
-
-.changelog-new {
-  font-size: 0.55rem;
-  letter-spacing: 0.14em;
-  transform: rotate(-2deg);
-}
-
-.changelog-points {
-  margin: 0.55rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.changelog-points li {
-  position: relative;
-  padding-left: 0.95rem;
-  font-size: 0.88rem;
-  line-height: 1.78;
-  color: var(--ink-muted);
-}
-
-.changelog-points li::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0.72em;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--accent) 55%, transparent);
-}
-
-.changelog-more {
-  margin-top: 1.6rem;
-  padding-bottom: 0.2rem;
-  border-bottom: 1px solid var(--hairline);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
-  color: var(--ink-subtle);
-  transition: color 0.16s ease, border-color 0.16s ease;
-}
-
-.changelog-more:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-@media (max-width: 639px) {
-  .changelog-note {
-    flex-wrap: wrap;
-  }
-  .changelog-note-btn {
-    margin-left: 2.8rem;
-  }
-  .changelog-item {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.4rem;
-  }
-  .changelog-date {
-    padding-top: 0;
-  }
-}
-
 /* ---------- 交互手感：按压、选中、悬停 ---------- */
 
 /* 按压：轻微下沉，比缩放更像"按到了东西" */
 .btn-primary:active,
 .btn-secondary:active,
-.changelog-note-btn:active,
 .bookmark-btn:active,
 .tag-scroller button:active,
 .search-hit:active {
@@ -3086,8 +2781,7 @@ body {
 
 /* 卡片：悬停抬起收快一点（0.5s 会显得懒），按下回落 */
 .acard,
-.exhibit,
-.mag-card {
+.exhibit {
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.34s cubic-bezier(0.22, 1, 0.36, 1),
     border-color 0.24s cubic-bezier(0.22, 1, 0.36, 1);
@@ -3116,13 +2810,6 @@ body {
     border-color 0.22s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* 键盘聚焦：一圈墨，不用系统默认蓝 */
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-  border-radius: 3px;
-}
-
 /* 触屏设备去掉 300ms 点击延迟与高亮块 */
 button,
 a {
@@ -3136,11 +2823,8 @@ a {
    余温 / 今夜多少字 / 抽签 / 搜索记忆 / 目录厚度 / 划过发一声
    ================================================================ */
 
-/* 年份泛黄：--paper-age 由卡片按日期算出（0 新 → 1 旧） */
-.acard {
-  position: relative;
-}
-
+/* 年份泛黄：--paper-age 由卡片按日期算出（0 新 → 1 旧）。
+   .acard 本身在 1.6k 行处已声明 position: relative，这里不再重复。 */
 .acard::after {
   content: '';
   position: absolute;
@@ -3152,13 +2836,8 @@ a {
   transition: opacity 0.35s ease;
 }
 
-/* 纸背透墨：悬停时墨从边缘往里洇一点（内阴影 + 极淡的内发光） */
+/* 纸背透墨：悬停时墨从边缘往里洇一点（投影写在 .acard:hover 主体里） */
 @media (hover: hover) {
-  .acard:hover {
-    box-shadow: inset 0 0 36px color-mix(in srgb, var(--accent) 8%, transparent),
-      0 18px 40px -32px rgba(35, 26, 18, 0.45);
-  }
-
   .acard:hover::after {
     opacity: calc(var(--paper-age, 0) * 0.85 + 0.07);
   }
@@ -3248,20 +2927,6 @@ html.first-light::after {
 }
 
 /* 今夜多少字 */
-.daily-words {
-  padding-left: 0.75rem;
-  border-left: 1px solid var(--hairline);
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.16em;
-  color: var(--ink-tertiary);
-}
-
-@media (max-width: 639px) {
-  .daily-words {
-    display: none;
-  }
-}
 
 /* 抽一根签 */
 .draw-lot {
@@ -3273,7 +2938,7 @@ html.first-light::after {
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--surface-1) 70%, transparent);
   font-size: 0.78rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: var(--ink-muted);
   transition: color 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
 }
@@ -3325,7 +2990,7 @@ html.first-light::after {
   border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
   font-size: 0.72rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: var(--ink-subtle);
   transition: color 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
 }
@@ -3345,16 +3010,18 @@ html.first-light::after {
   padding: 0.32rem 0.45rem;
 }
 
-/* 页边留白：宽屏时在正文右侧 */
+/* 页边留白：宽屏时在正文右侧。
+   断点只留 1280 一处——原先 1180 显示、1280 又 display:block，
+   两段规则互相覆盖；而 1180–1280 这段正是它最容易和正文抢空间的地方。 */
 .post-margin-note {
   display: none;
 }
 
-@media (min-width: 1180px) {
+@media (min-width: 1280px) {
   .post-margin-note {
     display: block;
     position: absolute;
-    right: -11.5rem;
+    right: -10rem;
     top: 5.5rem;
     width: 9rem;
   }
@@ -3493,7 +3160,7 @@ html.first-light::after {
   gap: 0.35rem;
   font-family: var(--font-mono);
   font-size: 0.6rem;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: var(--ink-tertiary);
 }
 
@@ -3653,7 +3320,7 @@ html.first-light::after {
   flex: none;
   font-family: var(--font-mono);
   font-size: 0.62rem;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   color: var(--ink-tertiary);
 }
 
@@ -3673,114 +3340,21 @@ html.first-light::after {
    首页「正在展出」跑马灯 + 手机端收口（2026-10-27）
    ================================================================ */
 
-.marquee-band {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 0.8rem 0;
-  border-top: 1px solid var(--hairline);
-  border-bottom: 1px solid var(--hairline);
-  background: color-mix(in srgb, var(--surface-1) 32%, transparent);
-  overflow: hidden;
-}
 
-.marquee-label {
-  flex: none;
-  margin-left: clamp(1rem, 4vw, 3rem);
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--accent);
-  white-space: nowrap;
-}
 
-.marquee-viewport {
-  position: relative;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
-}
 
-.marquee-track {
-  display: flex;
-  align-items: center;
-  gap: 2.25rem;
-  width: max-content;
-  animation: marquee-scroll 88s linear infinite;
-  will-change: transform;
-}
 
-.marquee-band:hover .marquee-track {
-  animation-play-state: paused;
-}
 
-@keyframes marquee-scroll {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
 
-.marquee-item {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  white-space: nowrap;
-  color: var(--ink-muted);
-  transition: color 0.2s ease;
-}
 
-.marquee-item:hover {
-  color: var(--accent);
-}
 
-.marquee-no {
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.14em;
-  color: var(--ink-tertiary);
-}
 
-.marquee-title {
-  font-family: var(--display);
-  /* 跑马灯是「一眼扫过」的东西，1rem 跟正文混在一起等于隐身；加大到 1.3rem 才有海报感 */
-  font-size: 1.3rem;
-}
-
-.marquee-tag {
-  font-family: var(--font-mono);
-  font-size: 0.55rem;
-  letter-spacing: 0.16em;
-  color: var(--ink-tertiary);
-  padding: 0 0.3rem;
-  border: 1px solid var(--hairline);
-  border-radius: 2px;
-}
 
 @media (prefers-reduced-motion: reduce) {
-  .marquee-track {
-    animation: none;
-  }
 }
 
 /* ---------- 手机端 ---------- */
 @media (max-width: 639px) {
-  .marquee-label {
-    display: none;
-  }
-  .marquee-track {
-    gap: 1.5rem;
-    animation-duration: 72s;
-  }
-  .marquee-title {
-    font-size: 1.05rem;
-  }
 
   /* 首屏：标题与照片之间别留那么大的空 */
   .hero-poster > div {
@@ -3802,30 +3376,13 @@ html.first-light::after {
   }
 
   /* 每日一句：去掉过宽的行距 */
-  .daily-text {
-    line-height: 1.45;
-  }
 }
 
 /* 跑马灯再醒目一点：数字用朱红，标题大一号，底纸略深 */
-.marquee-band {
-  background: color-mix(in srgb, var(--surface-2) 45%, transparent);
-  padding: 1rem 0;
-}
 
 /* 字号交给上面 1.3rem 的基础定义——这里原来写 1.08rem 把它盖回去了，两处打架 */
-.marquee-title {
-  color: var(--ink);
-}
 
-.marquee-no {
-  color: var(--accent);
-  opacity: 0.8;
-}
 
-.marquee-item:hover .marquee-title {
-  color: var(--accent);
-}
 
 /* 手机端：落款居中，别把左边空出一大片 */
 @media (max-width: 639px) {
@@ -3937,7 +3494,7 @@ html.dark {
   gap: 0.35rem;
   font-family: var(--font-mono);
   font-size: 0.72rem;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   color: var(--ink-tertiary);
   border-bottom: 1px solid transparent;
   transition: color 0.16s ease, border-color 0.16s ease;
@@ -3991,7 +3548,7 @@ html.dark {
   flex: none;
   font-family: var(--font-mono);
   font-size: 0.62rem;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: var(--ink-tertiary);
 }
 
@@ -4007,24 +3564,6 @@ html.dark {
 }
 
 /* 跑马灯里的引号 */
-.marquee-quote {
-  color: var(--accent);
-  opacity: 0.55;
-  font-family: var(--display);
-}
-
-/* 页边留白：1180–1280 会和正文抢空间，抬到 1280 */
-@media (min-width: 1180px) {
-  .post-margin-note {
-    display: none;
-  }
-}
-
-@media (min-width: 1280px) {
-  .post-margin-note {
-    display: block;
-  }
-}
 
 /* 星图：手机上只让前 12 个分区醒目，其余淡下去 */
 @media (max-width: 639px) {
@@ -4094,36 +3633,11 @@ html.dark {
 }
 
 /* 卡片：抬起 + 纸影加深；标题微微发热 */
-.acard {
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease,
-    border-color 0.28s ease, background-color 0.28s ease;
-}
 
-.acard:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 22px 46px -30px rgba(58, 40, 24, 0.55), 0 2px 0 0 color-mix(in srgb, var(--accent) 12%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 26%, var(--hairline));
-}
-
-/* 键盘可达性：焦点环用朱红，不用浏览器默认蓝 */
-:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
-  outline-offset: 3px;
-  border-radius: 3px;
-}
-
-/* 选中文字：纸上的朱砂 */
-::selection {
-  background: color-mix(in srgb, var(--accent) 26%, transparent);
-  color: var(--ink);
-}
-
-/* 暗色底：比原来的纯炭暖一点，纸感更足 */
-html.dark {
-  --canvas: #14100c;
-  --surface-1: #1b1611;
-  --surface-2: #221b15;
-}
+/* 暗色只有一套值：:root 就是夜墨，.light 是全套覆盖。
+   这里原本还有一个 html.dark 只改 3 个变量的补丁块，
+   结果是同一张「暗色」存在两个画布取值、层级也不对称。
+   已经合并回 :root，切主题时不再出现「换了一半」的观感。 */
 
 /* 滚动条：细，纸色 */
 html {
@@ -4282,7 +3796,7 @@ html.dark .prose-custom a:hover {
   flex: none;
   font-family: var(--font-mono);
   font-size: 0.58rem;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   color: var(--accent);
 }
 
@@ -4370,11 +3884,6 @@ html.dark .prose-custom a:hover {
 
 /* 播放器的安全区由 .mp-bar 的 bottom: calc(... + env(...)) 统一处理，
    这里不再重复加 padding——重复会把整条顶上去 */
-
-/* 选中态过渡统一 */
-::selection {
-  background: color-mix(in srgb, var(--accent) 26%, transparent);
-}
 
 /* 键盘跳转提示（按 g 后浮出） */
 .quick-hint {
@@ -4498,28 +4007,7 @@ html.dark body::after {
 /* 正文里的英文略收一点字距，和宋体的实字面拉平 */
 .prose-custom {
   font-synthesis-weight: none;
-}
-
-/* 引号退回三级灰：朱红只留给值得点火的东西 */
-.daily-quote-mark,
-.marquee-quote {
-  color: var(--ink-tertiary);
-}
-/* 页脚暗语 31 条：默认收起，悬停/聚焦才浮现，别把页脚变成表格 */
-.egg-hint {
-  display: block;
-  max-height: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition: max-height 0.3s ease, opacity 0.25s ease;
-}
-
-li:hover > .egg-hint,
-li:focus-within > .egg-hint {
-  max-height: 4rem;
-  opacity: 1;
-}
-/* ================================================================
+}/* ================================================================
    圆角与海报收口（2026-10-31 深夜 三）
    ================================================================ */
 
@@ -4669,5 +4157,20 @@ li:focus-within > .egg-hint {
   }
   50% {
     transform: rotate(2deg) scaleY(1.06);
+  }
+}
+
+/* ============ 减动总闸（放在文件最末，保证覆盖前面所有规则） ============
+   prefers-reduced-motion 原先只有零星几处：hover 位移、火星、火苗摇曳照转，
+   等于系统设置只关掉了一半动效。这里一次性收口。
+   0.001ms 而不是 0：保留 transitionend / animationend 事件，逻辑不会卡在过渡中等不到回调。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }

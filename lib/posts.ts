@@ -1,15 +1,31 @@
 import { Post, PostMeta, PostCardData } from '@/types/post'
 import postsData from './posts.json'
 
+/* 正文纯字数：去掉 Markdown 标记与空白。原先统计含语法符号与换行，
+   刊头「十三万字」与卡片字数都虚高，与正文实际体量对不上。 */
+const MARKUP = /[\s#>*`\-|~_\[\]()!]/g
+
+export function countChars(md: string): number {
+  return md
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(MARKUP, '').length
+}
+
 /* posts.json 里大部分篇目没有 wordCount 字段（历史数据），
    这里按正文汉字数补一个，统计与卡片才准。有值的仍然以数据为准。
-   wordCount 在类型上是展示用的字符串，所以按「万字 / 千字」出。 */
+   不足一千字的按「字」出——原先一律 Math.max(1, …) 会把 800 字写成「1 千字」。 */
 function withWordCount(list: Post[]): Post[] {
   return list.map((p) => {
     if (p.wordCount) return p
-    const chars = (p.content ?? '').replace(/[\s#>*`\-|]/g, '').length
+    const chars = countChars(p.content ?? '')
     const shown =
-      chars >= 10000 ? `${(chars / 10000).toFixed(1)} 万字` : `${Math.max(1, Math.round(chars / 100) / 10)} 千字`
+      chars >= 10000
+        ? `${(chars / 10000).toFixed(1)} 万字`
+        : chars >= 1000
+          ? `${(chars / 1000).toFixed(1)} 千字`
+          : `${chars} 字`
     return { ...p, wordCount: shown }
   })
 }
@@ -51,18 +67,37 @@ function toMeta(post: Post): PostMeta {
   return meta
 }
 
+/* 纯日期倒序：置顶只影响「目录里的展示顺序」，不该影响「最新是哪篇」。
+   全站凡是问「最新」「最近」的地方都走这个，别再拿 sortPosts()[0]。 */
+export function byDateDesc(a: PostMeta, b: PostMeta): number {
+  return b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug)
+}
+
 export function getAllPosts(): PostMeta[] {
   return sortPosts(posts).map(toMeta)
+}
+
+/* 真正的最新一篇（排除置顶的小说，它在首页有独立横幅） */
+export function getLatestPost(excludeSlug?: string): PostMeta | undefined {
+  return posts
+    .filter((p) => p.slug !== excludeSlug)
+    .map(toMeta)
+    .sort(byDateDesc)[0]
 }
 
 export function getPostBySlug(slug: string): Post | undefined {
   return posts.find((post) => post.slug === slug)
 }
 
-export function getFeaturedPosts(): PostMeta[] {
-  return sortPosts(posts)
-    .slice(0, 4)
+/* 首页「最近文章」= 按发布日期最新的 N 篇，不是目录前 N 条。
+   原先取 sortPosts().slice(0,4)：小说占一位、置顶得意篇占一位，
+   7 月的文章会出现在「最近」里。 */
+export function getFeaturedPosts(limit = 3, excludeSlug = 'novel-01'): PostMeta[] {
+  return posts
+    .filter((p) => p.slug !== excludeSlug)
     .map(toMeta)
+    .sort(byDateDesc)
+    .slice(0, limit)
 }
 
 export function getPostsByTag(tag: string): PostMeta[] {
@@ -107,8 +142,9 @@ export interface ArchiveStats {
 export function getArchiveStats(): ArchiveStats {
   const list = getAllPosts()
   const minutes = list.reduce((sum, p) => sum + (parseInt(p.readingTime, 10) || 0), 0)
+  /* 不能用 list（sortPosts 之后小说在最前），最新日期要单独求最大值 */
   const latest = list.reduce((max, p) => (p.date > max ? p.date : max), '')
-  const chars = posts.reduce((sum, p) => sum + (p.content ? p.content.length : 0), 0)
+  const chars = posts.reduce((sum, p) => sum + countChars(p.content ?? ''), 0)
   return { count: list.length, chars, minutes, latest }
 }
 
@@ -146,8 +182,16 @@ function plainText(md: string): string {
 
 /* 正文截断：搜索只需要"命中片段"，全文可以点进去看。
    原先取 4000 字——212 篇里绝大多数不到 4000，等于全文入库，
-   索引实测 359KB（承诺 200KB）。收到 1500 字后约 150KB，移动端首开快一半。 */
-const BODY_LIMIT = 1500
+   索引实测 359KB（承诺 200KB）。收到 1500 字后约 150KB，移动端首开快一半。
+   2026-11 修正：只留头部会让长文的后半段永远搜不到。
+   改成「头 1800 + 尾 600」，索引体积几乎不变，结尾的落点也能命中。 */
+const HEAD_LIMIT = 1800
+const TAIL_LIMIT = 600
+
+function bodySlice(text: string): string {
+  if (text.length <= HEAD_LIMIT + TAIL_LIMIT) return text
+  return `${text.slice(0, HEAD_LIMIT)} … ${text.slice(-TAIL_LIMIT)}`
+}
 
 export function getSearchDocs(): SearchDoc[] {
   return sortPosts(posts).map((p) => ({
@@ -156,6 +200,6 @@ export function getSearchDocs(): SearchDoc[] {
     date: p.date,
     tags: p.tags ?? [],
     excerpt: p.excerpt ?? '',
-    body: plainText(p.content ?? '').slice(0, BODY_LIMIT),
+    body: bodySlice(plainText(p.content ?? '')),
   }))
 }

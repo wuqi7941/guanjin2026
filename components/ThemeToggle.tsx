@@ -8,7 +8,10 @@ import { useEffect, useState } from 'react'
 import { bumpCounter, collectEgg } from '@/lib/eggs'
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme()
+  /* 用 resolvedTheme 而不是 theme：默认主题是 system，此时 theme 的值是字符串
+     'system'，`theme === 'dark'` 永远为假——系统明明是深色，按钮却显示月亮
+     「切换到暗色模式」，点一下还看不出变化。resolvedTheme 才是「眼前这一页到底是深是浅」。 */
+  const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -23,7 +26,7 @@ export function ThemeToggle() {
     )
   }
 
-  const isDark = theme === 'dark'
+  const isDark = resolvedTheme === 'dark'
 
   return (
     <m.button

@@ -1,15 +1,23 @@
 /* 访问量统计 —— Cloudflare Pages Functions + D1
  *
  * POST /api/visit  { path }   每次页面进入记一笔
- * GET  /api/visit             总数 / 今日 / 近 30 天 / 最近 12 笔
+ * GET  /api/visit             总数 / 今日 / 去过的人 / 近 30 天
+ * GET  /api/visit?key=…       额外返回最近 12 笔脚印（需 STATS_KEY）
  *
  * 隐私：不存原始 IP，只存 sha256(SALT + cf-connecting-ip) 用于 60 秒防刷；
  *       不存 UA、Cookie、昵称或任何能把两笔记录关联到同一个人的标识。
  * 响应 private, no-store：计数页要看到刚点进来的那一笔。
+ *
+ * 2026-11 改动：最近脚印（带 path 的 12 条记录）不再对所有人开放。
+ *   聚合数字（总访问、今日、去过的人）算不出任何个人，可以公开；
+ *   但「最近谁看了哪一页、几点看的」是行为轨迹，加个口令再给。
+ *   口令从 Cloudflare 环境变量 STATS_KEY 注入；没设就干脆不返回。
  */
 
 interface Env {
   COMMENTS_DB: D1Database
+  STATS_KEY?: string
+  IP_SALT?: string
 }
 
 type PagesFunction<E> = (ctx: { request: Request; env: E }) => Promise<Response>
@@ -27,7 +35,7 @@ interface D1Database {
   prepare(sql: string): D1Statement
 }
 
-const SALT = 'embers-visit-v1::guanjin2011.de5.net'
+const DEFAULT_SALT = 'embers-visit-v1::guanjin2011.de5.net'
 const RATE_WINDOW_MS = 60_000
 const RATE_MAX = 20
 
@@ -46,9 +54,9 @@ function beijingDay(ts: number): string {
   return new Date(ts + 8 * 3600 * 1000).toISOString().slice(0, 10)
 }
 
-async function ipHash(request: Request): Promise<string> {
+async function ipHash(request: Request, salt: string): Promise<string> {
   const ip = request.headers.get('cf-connecting-ip') || '0.0.0.0'
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(SALT + ip))
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + ip))
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
@@ -65,7 +73,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     .replace(/[\u0000-\u001f]+/g, '')
     .slice(0, 120) || '/'
 
-  const ip = await ipHash(request)
+  const ip = await ipHash(request, env.IP_SALT || DEFAULT_SALT)
   const now = Date.now()
 
   /* 防脚本刷量：同一出口 IP 一分钟最多 20 笔，正常翻页碰不到 */
@@ -85,7 +93,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   return json({ ok: true })
 }
 
-export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
+export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const now = Date.now()
   const total = await env.COMMENTS_DB.prepare('SELECT COUNT(*) AS n FROM visits').first<{ n: number }>()
   const today = await env.COMMENTS_DB.prepare('SELECT COUNT(*) AS n FROM visits WHERE day = ?')
@@ -102,15 +110,26 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   )
     .bind(now - 30 * 86400000)
     .all<{ day: string; n: number }>()
-  const { results: recent } = await env.COMMENTS_DB.prepare(
-    'SELECT ts, path FROM visits ORDER BY ts DESC LIMIT 12',
-  ).all<{ ts: number; path: string }>()
+
+  /* 脚印要口令。没配 STATS_KEY 或口令不对，就只给聚合数字——
+     免得任何人打开 /api/visit 都能读到「刚才有人看了哪一页」。 */
+  const key = new URL(request.url).searchParams.get('key') || ''
+  const canSeeRecent = Boolean(env.STATS_KEY) && key === env.STATS_KEY
+
+  const recent = canSeeRecent
+    ? (
+        await env.COMMENTS_DB.prepare('SELECT ts, path FROM visits ORDER BY ts DESC LIMIT 12').all<{
+          ts: number
+          path: string
+        }>()
+      ).results
+    : null
 
   return json({
     total: total?.n ?? 0,
     today: today?.n ?? 0,
     unique: unique?.n ?? 0,
     days: (days ?? []).map((d) => ({ day: d.day, n: d.n })),
-    recent: (recent ?? []).map((r) => ({ ts: r.ts, path: r.path })),
+    ...(recent ? { recent: (recent ?? []).map((r) => ({ ts: r.ts, path: r.path })) } : {}),
   })
 }

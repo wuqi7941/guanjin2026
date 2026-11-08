@@ -11,6 +11,23 @@ export interface LrcLine {
   txt: string
 }
 
+/* 带超时的取数：播放器的元数据 / 歌词都是「有就更好，没有也能放」，
+   但无超时的 fetch 会一直挂着，把后面同一首歌的请求排在它后面。 */
+async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
+  const ac = new AbortController()
+  const timer = setTimeout(() => ac.abort(), ms)
+  try {
+    const r = await fetch(url, { signal: ac.signal })
+    if (!r.ok) throw new Error(`http ${r.status}`)
+    return r
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+const fetchJSON = (url: string, ms: number) => fetchWithTimeout(url, ms).then((r) => r.json())
+const fetchText = (url: string, ms: number) => fetchWithTimeout(url, ms).then((r) => r.text())
+
 function parseLrc(txt: string): LrcLine[] {
   const out: LrcLine[] = []
   const re = /\[(\d+):(\d+)(?:\.(\d+))?\]/g
@@ -106,6 +123,12 @@ export function usePlayerStore() {
   const lastDurRef = useRef(0)
   /* 暗语「挑不出来」：连续切歌计数 */
   const nextBurstRef = useRef({ t: 0, n: 0 })
+  /* 请求序号：A→B→A 时两个闭包里捕获的 i 相同，只靠下标判断会把过期结果当成有效。
+     每次 play() 自增，异步回调只认自己那一号。 */
+  const reqSeqRef = useRef(0)
+  /* GD 完整源还在解析中：这段时间里「时长不足 65s」不能立刻降档，
+     否则会跟解析结果抢着换源，来回抖。 */
+  const gdPendingRef = useRef(false)
 
   const saveState = useCallback(() => {
     const a = audioRef.current
@@ -141,8 +164,9 @@ export function usePlayerStore() {
       activeLrcRef.current = -1
       setActiveLrc(-1)
       if (!s?.id) return
-      fetch(META_URL(s.id))
-        .then((r) => r.json())
+      /* 元数据接口没有超时也没有状态码检查：上游 502 时 r.json() 抛错被空 catch 吞掉，
+         界面表现和「这首歌没有封面」一样，查起来毫无线索。 */
+      fetchJSON(META_URL(s.id), 6000)
         .then((j) => {
           if (idxRef.current !== i) return
           const m = j && j[0]
@@ -151,8 +175,7 @@ export function usePlayerStore() {
             const u: string = m.lrc
             if (lrcCacheRef.current[u]) applyLrc(lrcCacheRef.current[u])
             else
-              fetch(u)
-                .then((r) => r.text())
+              fetchText(u, 6000)
                 .then((txt) => {
                   /* 内层也要校验：上一首的歌词比它的音频先回来时，
                      不加这条就把 A 歌词糊到 B 歌头上 */
@@ -190,35 +213,48 @@ export function usePlayerStore() {
       setIdx(i)
       setErr('')
       triesRef.current = 0
-      srcTierRef.current = 0
       lastDurRef.current = 0
       carriedTimeRef.current = 0
       const a = audioRef.current
       if (!a) return
       const track = PLAYLIST[i]
+      const myReq = ++reqSeqRef.current
       /* 清掉上一首残留的进度/时长，别让新歌头两秒显示旧的百分比 */
       setTime(0)
       setDuration(0)
       /* 起点先记下：URL 到手、metadata 到了再 seek 才生效 */
       restoreTimeRef.current = seekTo
       setBuffering(true)
-      const start = (src: string, tier: number) => {
-        srcTierRef.current = tier
-        a.src = src
-        a.load()
-        a.volume = volRef.current
-        playSafe(a)
-      }
-      /* 主源 GD Studio（完整 320k，JSONP）；失败退 meting；都废则交给 onError 兜底网易 */
+
+      /* 同步起播：先挂 meting 的 302 直链（一个普通 URL，拿得到就能立即 load）。
+         GD Studio 走的是 JSONP，要在 <script> 回调里才拿到地址——
+         那已经脱离了点击的用户激活上下文，首次播放会被自动播放策略拦掉。
+         所以顺序反过来：先出声，再把音源无损升级到 GD 的完整 320k。 */
+      srcTierRef.current = 1
+      a.src = TRACK_URL(track.id)
+      a.load()
+      a.volume = volRef.current
+      playSafe(a)
+
+      gdPendingRef.current = true
       gdTrackUrl(track.id)
         .then((url) => {
-          if (idxRef.current !== i) return /* 已经切歌，这次结果作废 */
-          start(url, 0)
+          gdPendingRef.current = false
+          if (myReq !== reqSeqRef.current) return /* 已经切到别的歌，这次结果作废 */
+          if (srcTierRef.current === 2) return /* 已经退到网易兜底，别再折腾 */
+          /* 升级到完整源，把已经走过的秒数带过去 */
+          const wasPlaying = !a.paused
+          carriedTimeRef.current = a.currentTime > 0.5 ? a.currentTime : 0
+          srcTierRef.current = 0
+          a.src = url
+          a.load()
+          if (wasPlaying) playSafe(a)
         })
         .catch(() => {
-          if (idxRef.current !== i) return
-          start(TRACK_URL(track.id), 1)
+          gdPendingRef.current = false
+          /* GD 拿不到就继续用 meting，onError 会再退网易，这里不用动 */
         })
+
       fetchMeta(i)
     },
     [fetchMeta, playSafe],
@@ -265,8 +301,12 @@ export function usePlayerStore() {
     const a = audioRef.current
     if (!a) return
     if (a.paused) {
-      /* 恢复态还没有 src（直链有时效，播放时才解析）：从记录的进度重新起播 */
-      if (a.src) playSafe(a)
+      /* 有 src 就直接播；没有 src 才重新解析。
+         用 getAttribute 而不是 a.src：三档源全废时我们 removeAttribute('src')
+         把地址摘掉，此时读 a.src 会回落到文档地址（非空字符串），
+         于是「重新解析」那条路永远走不到，只会对着坏地址反复 play()。
+         readyState 也不能作为判据——刚挂上 src 还没加载时它本来就是 0。 */
+      if (a.getAttribute('src')) playSafe(a)
       else play(idxRef.current >= 0 ? idxRef.current : 0, restoreTimeRef.current)
     } else {
       a.pause()
@@ -283,7 +323,10 @@ export function usePlayerStore() {
   const seekToTime = useCallback((sec: number) => {
     const a = audioRef.current
     if (!a || !isFinite(sec) || sec < 0) return
-    a.currentTime = sec
+    /* 试听源只有 30 秒，歌词却按完整版对齐：直接 seek 到越界位置会立刻 ended，
+       表现成「点了后面某句歌词，直接跳到下一首」。夹在时长内，且留 0.3 秒余量。 */
+    const dur = isFinite(a.duration) ? a.duration : 0
+    a.currentTime = dur > 0 ? Math.min(sec, Math.max(0, dur - 0.3)) : sec
   }, [])
 
   const toggleShuffle = useCallback(() => {
@@ -464,25 +507,29 @@ export function usePlayerStore() {
       /* 起点恢复，优先级：换源携带的进度 > 用户上次听到的地方。
          末尾留 5 秒余量——seek 到末尾会立刻 ended，用户一恢复就被跳到下一首。 */
       const want = carriedTimeRef.current || restoreTimeRef.current
+      const dur = isFinite(a.duration) && a.duration > 0 ? a.duration : 0
+      /* 短源 = 疑似试听：这一趟只把进度夹在时长里，不消耗恢复点。
+         原先不管长短都清零 restoreTimeRef，结果「上次听到 3:20」一遇到 30 秒试听
+         就被永久改成 0:25，换到完整源后再也回不到原位置。 */
+      const isPreview = dur > 0 && dur < 65
+      carriedTimeRef.current = 0
       if (want > 0) {
-        carriedTimeRef.current = 0
-        restoreTimeRef.current = 0
-        const dur = isFinite(a.duration) && a.duration > 0 ? a.duration : 0
         const safe = dur > 10 ? Math.min(want, dur - 5) : want
         try {
           a.currentTime = safe
         } catch {
           /* ignore */
         }
+        if (!isPreview) restoreTimeRef.current = 0
       }
       /* 时长过短（<65s，疑似试听）→ 降档换源拿完整版。
-         但若换源后的时长和上一源几乎一致，说明这就是完整长度（真短歌），别再来回换。 */
-      const dur = isFinite(a.duration) ? a.duration : 0
-      if (dur > 0 && dur < 65) {
+         但若换源后的时长和上一源几乎一致，说明这就是完整长度（真短歌），别再来回换。
+         GD 还在解析时先别动：那条线马上会把音源换成完整版。 */
+      if (isPreview && !gdPendingRef.current) {
         const same = lastDurRef.current > 0 && Math.abs(dur - lastDurRef.current) < 1.5
         lastDurRef.current = dur
         if (!same) swapSource()
-      } else {
+      } else if (!isPreview) {
         lastDurRef.current = 0
       }
     },
@@ -506,7 +553,11 @@ export function usePlayerStore() {
         }
       }
       const a = e.currentTarget
-      if (a.duration && a.duration < 65) {
+      /* 只在真的播到末尾、且还有更低一档源时才换；否则 next()。
+         原先条件是「时长 < 65s 就换源」，一首 40 秒的真短歌会换源 → 重新播 → 又 ended，
+         来回几轮才因为 triesRef 用完而前进。 */
+      const atEnd = a.duration > 0 && a.currentTime >= a.duration - 1.5
+      if (atEnd && a.duration < 65 && srcTierRef.current < 2) {
         if (swapSource()) return
       }
       next()
@@ -517,6 +568,13 @@ export function usePlayerStore() {
         setErr('网络源暂不可用')
         setPlaying(false)
         setBuffering(false)
+        /* 三档全废后必须把坏地址摘掉：否则 toggle() 只见 src 非空就重试同一个坏 URL，
+           永远出不了声。摘掉之后 toggle() 会走「重新解析」那条路。 */
+        const a = audioRef.current
+        if (a) {
+          a.removeAttribute('src')
+          a.load()
+        }
       }
     },
   }

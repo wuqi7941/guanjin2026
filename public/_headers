@@ -1,18 +1,20 @@
 # Cloudflare Pages 响应头（output:export 下代码里的 headers 不生效，以本文件为准）
 # 规则顺序：全局兜底在前，具体路径在后
 
+# geolocation 必须放行同源：首页天气靠浏览器定位权限拿精确坐标（hooks/useWeather.ts）。
+# 原先写 geolocation=() 把整条路径掐死在响应头，读者点了同意也拿不到坐标。
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Permissions-Policy: camera=(), microphone=(), geolocation=(self)
   Content-Security-Policy: frame-ancestors 'none'
 
-# 构建产物：文件名带内容哈希，永久缓存（回访不再对 36 个 JS + 3 个 CSS 发条件请求）
+# 构建产物：文件名带内容哈希，永久缓存（回访不再对那批 JS / CSS 发条件请求）
 /_next/static/*
   Cache-Control: public, max-age=31536000, immutable
 
-# 字体：二进制分片永久缓存；fonts.css 文件名无哈希，必须短缓存
-# （曾把整个 /fonts/* 设成一年 immutable，改字体后回访用户一年拿不到新 CSS）
+# 字体：二进制分片永久缓存。fonts.css 现在由 layout.tsx 构建期内联进 <head>，
+# 这份文件只是兜底（有人直接访问 /fonts/fonts.css 时给个短缓存，别锁死）
 /fonts/*.woff2
   Cache-Control: public, max-age=31536000, immutable
 
@@ -27,11 +29,8 @@
 /hero-photo.webp
   Cache-Control: public, max-age=604800
 
-# 搜索索引 / 每日句：一小时（内容随构建更新）
+# 搜索索引：一小时（内容随构建更新）
 /search-index.json
-  Cache-Control: public, max-age=3600
-
-/daily-lines.json
   Cache-Control: public, max-age=3600
 
 # RSS：十分钟；MIME 也在这里补——静态导出时 route 里设的 headers 不会落盘

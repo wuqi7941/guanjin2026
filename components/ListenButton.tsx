@@ -56,6 +56,20 @@ export function ListenButton() {
       idxRef.current += 1
       if (stateRef.current === 'playing') speakNext()
     }
+    /* 没有 onerror 的后果：某一句合成失败时既不走 onend 也不报错，
+       队列停在那里，按钮却一直显示「暂停中」，只能刷新页面。
+       失败就当作这一句跳过，把队列推下去；连续失败由 speakNext 的边界兜住。 */
+    u.onerror = () => {
+      if (gen !== genRef.current) return
+      if (stateRef.current !== 'playing') return
+      idxRef.current += 1
+      if (idxRef.current >= queueRef.current.length) {
+        setPhase('idle')
+        idxRef.current = 0
+        return
+      }
+      speakNext()
+    }
     synth.speak(u)
   }
 

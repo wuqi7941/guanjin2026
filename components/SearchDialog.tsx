@@ -33,10 +33,19 @@ function loadIndex(): Promise<Doc[]> {
   if (cache) return Promise.resolve(cache)
   if (!inflight) {
     inflight = fetch('/search-index.json')
-      .then((r) => r.json())
-      .then((list: Doc[]) => {
-        cache = list
-        return list
+      .then((r) => {
+        if (!r.ok) throw new Error(`http ${r.status}`)
+        return r.json()
+      })
+      .then((list: unknown) => {
+        /* 不能直接信任 JSON 形状：索引构建失败时产物可能是 {error:…} 或空对象，
+           下面的 search() 会立刻在 list.map 上崩掉，而且是那种「一开搜索就白屏」的崩。
+           形状不对就当索引为空，退化成「没找到」，界面还能用。 */
+        const docs = Array.isArray(list)
+          ? list.filter((d): d is Doc => !!d && typeof (d as Doc).slug === 'string' && typeof (d as Doc).title === 'string')
+          : []
+        cache = docs
+        return docs
       })
       .catch(() => {
         inflight = null
@@ -210,6 +219,9 @@ export function SearchDialog() {
       const el = document.activeElement as HTMLElement | null
       const typing = !!el?.closest('input, textarea, select, [contenteditable="true"]')
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        /* 在评论正文 / 昵称里按 Ctrl+K 时不要抢：那里用系统/浏览器自己的键位。
+           （斜杠键本来就判断了 typing，Ctrl+K 之前漏了同一个判断。） */
+        if (typing) return
         e.preventDefault()
         openDialog()
         return
@@ -300,12 +312,14 @@ export function SearchDialog() {
       setActive((i) => Math.max(0, i - 1))
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      noteMiss()
+      /* 先判暗门再记 miss：口令本来就不是「搜索」，
+         原先敲「观烬」回车会被记成一次没搜到，三次就误触发 search3 彩蛋。 */
       const door = doorOf(q)
       if (door) {
         goPath(door.href)
         return
       }
+      noteMiss()
       const hit = hits[active]
       if (hit) go(hit.doc.slug)
     }

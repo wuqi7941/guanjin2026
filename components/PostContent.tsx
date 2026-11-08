@@ -73,8 +73,17 @@ function playThread() {
 
 function extractToc(content: string): TocItem[] {
   const items: TocItem[] = []
+  let fenced = false
   for (const line of content.split('\n')) {
-    const m = line.match(/^(#{2,3})\s+(.+)$/)
+    /* 围栏代码块要整体跳过：代码注释里的 `## 用法` 会被当成标题收进目录，
+       点过去却找不到锚点（渲染器不会给代码块里的行生成 id）。 */
+    if (/^\s*(```|~~~)/.test(line)) {
+      fenced = !fenced
+      continue
+    }
+    if (fenced) continue
+    /* h4 也要收：MarkdownRenderer 给 h4 同样生成了 id，目录里漏掉就成了孤岛 */
+    const m = line.match(/^(#{2,4})\s+(.+)$/)
     if (m && m[2].trim()) {
       items.push({
         level: m[1].length,

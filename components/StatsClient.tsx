@@ -10,7 +10,8 @@ interface Stats {
   /* 按「同一天 + 同一 IP 哈希」去重后的累计人数 */
   unique: number
   days: Array<{ day: string; n: number }>
-  recent: Array<{ ts: number; path: string }>
+  /* 最近脚印要口令：/api/visit 不带 key 时根本不返回这个字段 */
+  recent?: Array<{ ts: number; path: string }>
 }
 
 /* 北京时间的日历日（UTC+8），与 Functions 里的 beijingDay 同一套口径 */
@@ -18,11 +19,16 @@ function bjDay(ts: number): string {
   return new Date(ts + 8 * 3600 * 1000).toISOString().slice(0, 10)
 }
 
+/* 时间一律按北京时间显示。原先用浏览器本地时区格式化，
+   和 bjDay()、Functions 里的 UTC+8 口径对不上——人在国外看统计，
+   柱状图按北京日切、脚印按本地日切，同一笔记录两边日期不同。 */
 function clock(ts: number): string {
-  const d = new Date(ts)
+  const d = new Date(ts + 8 * 3600 * 1000)
   const p = (n: number) => String(n).padStart(2, '0')
-  return `${p(d.getMonth() + 1)}.${p(d.getDate())}  ${p(d.getHours())}:${p(d.getMinutes())}`
+  return `${p(d.getUTCMonth() + 1)}.${p(d.getUTCDate())}  ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`
 }
+
+const KEY_STORE = 'embers_stats_key'
 
 export function StatsClient() {
   const reduce = !!useReducedMotion()
@@ -31,7 +37,21 @@ export function StatsClient() {
 
   useEffect(() => {
     let cancelled = false
-    fetch('/api/visit', { cache: 'no-store' })
+    /* 口令来自 ?key=… 或上次存下的值。只有带口令才会拿到最近脚印，
+       聚合数字（今日 / 去过的人 / 近十四日）不需要口令。 */
+    let key = ''
+    try {
+      const fromUrl = new URLSearchParams(window.location.search).get('key') || ''
+      if (fromUrl) {
+        localStorage.setItem(KEY_STORE, fromUrl)
+        key = fromUrl
+      } else {
+        key = localStorage.getItem(KEY_STORE) || ''
+      }
+    } catch {
+      /* 隐私模式禁 localStorage：这次就看不到脚印，其余数字照常 */
+    }
+    fetch(`/api/visit${key ? `?key=${encodeURIComponent(key)}` : ''}`, { cache: 'no-store' })
       .then((r) => {
         if (!r.ok) throw new Error('bad response')
         return r.json()
@@ -152,7 +172,11 @@ export function StatsClient() {
         <p className="text-[10px] font-mono tracking-[0.22em] text-[var(--ink-tertiary)] mb-4">
           最近留下的脚印 · RECENT
         </p>
-        {data && data.recent.length === 0 ? (
+        {data && !data.recent ? (
+          <p className="text-sm text-[var(--ink-subtle)]">
+            脚印要口令。地址后面加 <code className="font-mono text-[var(--ink-muted)]">?key=…</code> 再看。
+          </p>
+        ) : data?.recent && data.recent.length === 0 ? (
           <p className="text-sm text-[var(--ink-subtle)]">还没有人来过。你是第一个。</p>
         ) : (
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5">

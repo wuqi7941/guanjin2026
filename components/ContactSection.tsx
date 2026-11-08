@@ -21,9 +21,10 @@ export function ContactSection() {
             <span className="w-8 h-[2px] bg-[var(--accent)]" />
             Contact — 04 / 04
           </span>
-          <h2 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold tracking-[0.01em] text-[var(--ink)] mb-6">
+          {/* 联系页原本没有 h1，整页最大标题是 h2——对屏幕阅读器和搜索结果都是「这一页没有主标题」 */}
+          <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold tracking-[0.01em] text-[var(--ink)] mb-6">
             保持联系
-          </h2>
+          </h1>
           <p className="text-lg text-[var(--ink-muted)] max-w-2xl">
             有项目、想法或单纯想聊聊设计与技术，随时找我。
           </p>

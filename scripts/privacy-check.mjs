@@ -90,6 +90,16 @@ const RULES = [
   },
   {
     level: 'BLOCK',
+    name: '哈希盐字面量',
+    /* IP 哈希的盐原先写死在 functions/api/comments.ts 与 visit.ts 里，
+       上面那条规则的关键字表没有 salt，扫了三年也扫不到。
+       现在两个端点都支持 env.IP_SALT 覆盖，默认值有据可查、留了白名单；
+       新写的、来路不明的盐会被这条拦住。 */
+    re: /(?:ip[_-]?salt|salt)\s*[:=]\s*['"`]([^'"`\s]{8,})['"`]/gi,
+    keep: (m) => !/^embers-(?:cmt|visit)-v1::/.test(m[1]),
+  },
+  {
+    level: 'BLOCK',
     name: '本机绝对路径 / 机器用户名',
     /* 必须是「盘符\Users\用户名\…」这种完整路径，光出现 C:\Users 字样不算 */
     re: /[A-Za-z]:[\\/](?:Users|Documents|Desktop)[\\/][A-Za-z0-9一-龥（）()_-]{2,}[\\/]|\/Users\/[A-Za-z][A-Za-z0-9._-]*\/|\/home\/[A-Za-z][A-Za-z0-9._-]*\/|Admin（无密码）|Desktop[\\/]workbuddy/g,
@@ -160,6 +170,26 @@ for (const f of [...sourceFiles, ...distFiles]) {
 const badNames = [...new Set([...sourceFiles, ...git(['log', '--all', '--pretty=format:', '--name-only'])])]
   .filter((f) => SENSITIVE_FILE.test(f))
   .filter((f) => !/\.d\.ts$/.test(f))
+
+/* .env / .dev.vars 这类文件通常在 .gitignore 里，所以它们既不在 tracked 也不在
+   untracked 清单里——正文永远扫不到，等于漏检。
+   真正危险的不是「本地有一份」，而是「它被 git 跟踪了」。
+   （`.dev.vars` 还被本文件的 SENSITIVE_FILE 规则刻意放过，因为过去它根本没进过仓库。）
+   这里单独用 git 判断是否被跟踪：一旦被跟踪，push 就是永久泄露，直接 BLOCK。 */
+const LOCAL_SECRETS = ['.env', '.env.local', '.env.production', '.dev.vars', '.dev.vars.local']
+const trackedSecrets = LOCAL_SECRETS.filter((f) => {
+  if (!fs.existsSync(path.join(ROOT, f))) return false
+  try {
+    execFileSync('git', ['ls-files', '--error-unmatch', f], {
+      cwd: ROOT,
+      stdio: ['ignore', 'ignore', 'ignore'],
+    })
+    return true
+  } catch {
+    return false
+  }
+})
+for (const f of trackedSecrets) badNames.push(f)
 
 /* ── 汇总 ── */
 const blocks = [...hits.values()].filter((h) => h.level === 'BLOCK')

@@ -5,6 +5,14 @@ import { AuroraBackground } from '@/components/AuroraBackground'
 import { Relight } from '@/components/Relight'
 import { EggOnMount } from '@/components/EggOnMount'
 
+/* 404 也要有自己的 metadata：静态导出时它沿用 layout 的标题与描述，
+   搜索结果里会出现「余烬 EMBERS — 观烬的个人博客」配一个不存在的地址。 */
+export const metadata = {
+  title: '这一页烧完了 — 余烬 EMBERS',
+  description: '这个地址上没有东西了。回首页，或去文章列表里走走。',
+  robots: { index: false, follow: true },
+}
+
 export default function NotFound() {
   return (
     <main id="main-content" className="relative min-h-screen">

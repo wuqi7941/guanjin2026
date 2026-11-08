@@ -16,7 +16,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-const DIST = path.resolve(process.cwd(), 'dist')
+const ROOT = process.cwd()
+const DIST = path.resolve(ROOT, 'dist')
 const problems = []
 const notes = []
 
@@ -37,7 +38,9 @@ function walk(dir, out = []) {
 
 const all = walk(DIST)
 const rel = (p) => path.relative(DIST, p).replace(/\\/g, '/')
-const textExt = /\.(html|js|css|json|xml|txt|webmanifest|svg)$/i
+/* .toml / .sql / .yml 也当文本扫：wrangler.toml 与 d1-schema.sql 是纯文本，
+   以前不在名单里，dist 之外的这两份配置从未被任何规则看过一眼。 */
+const textExt = /\.(html|js|css|json|xml|txt|webmanifest|svg|toml|sql|ya?ml)$/i
 const imgExt = /\.(webp|png|jpe?g|gif|avif|ico)$/i
 
 /* ── 1. 文本文件里的路径与痕迹 ── */
@@ -74,6 +77,19 @@ for (const f of all) {
   /* ── 4. 私密目录/文件误入 ── */
   if (/^\.(env|git|wrangler)|node_modules|^\.backup|^_文档/i.test(r.split('/')[0] + '/'))
     problems.push(`私密路径误入：${r}`)
+}
+
+/* ── 2b. 仓库根目录里「不进 dist、但会 push」的配置 ──
+   它们不在 dist 里，上面那圈循环扫不到；而 git push 会把它们原样公开。
+   这里只做与产物同一套路径 / 痕迹检查，不重复隐私扫描（那是 privacy-check 的活）。 */
+const ROOT_EXTRA = ['wrangler.toml', 'scripts/d1-schema.sql', 'next.config.js', 'package.json', '.gitignore']
+for (const f of ROOT_EXTRA) {
+  const abs = path.join(ROOT, f)
+  if (!fs.existsSync(abs)) continue
+  const s = fs.readFileSync(abs, 'utf8')
+  for (const { re, label } of PATH_PATTERNS) {
+    if (re.test(s)) problems.push(`${label}：${f}`)
+  }
 }
 
 /* ── 3. 图片元数据（EXIF / GPS / Adobe） ── */

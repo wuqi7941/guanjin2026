@@ -1,28 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="12" fill="#0a0807"/>
-  <!-- 按键阴影 -->
-  <rect x="0" y="0" width="64" height="64" rx="12" fill="url(#g)"/>
-  <defs>
-    <radialGradient id="g" cx="0.5" cy="1" r="0.9">
-      <stop offset="0" stop-color="#ff5a1f" stop-opacity="0.28"/>
-      <stop offset="0.7" stop-color="#ff5a1f" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="wf" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#4a4138"/>
-      <stop offset="1" stop-color="#241f1a"/>
-    </linearGradient>
-  </defs>
-  <!-- 白键 -->
-  <rect x="9" y="24" width="9" height="26" rx="1.5" fill="url(#wf)" stroke="#8a7d6d" stroke-width="0.8"/>
-  <rect x="21" y="24" width="9" height="26" rx="1.5" fill="url(#wf)" stroke="#8a7d6d" stroke-width="0.8"/>
-  <rect x="33" y="24" width="9" height="26" rx="1.5" fill="url(#wf)" stroke="#8a7d6d" stroke-width="0.8"/>
-  <rect x="45" y="24" width="9" height="26" rx="1.5" fill="url(#wf)" stroke="#8a7d6d" stroke-width="0.8"/>
-  <!-- 黑键 -->
-  <rect x="14.5" y="24" width="6" height="16" rx="1" fill="#050302"/>
-  <rect x="38.5" y="24" width="6" height="16" rx="1" fill="#050302"/>
-  <!-- 余烬线 -->
-  <rect x="9" y="52.5" width="45" height="2.5" rx="1.2" fill="#ff6a30"/>
-  <circle cx="18" cy="50" r="1.4" fill="#ff9a4d"/>
-  <circle cx="41" cy="48.5" r="1.1" fill="#ff7a45" opacity="0.9"/>
-  <circle cx="30" cy="49.6" r="0.9" fill="#ffd9a0" opacity="0.85"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="余烬 EMBERS">
+  <!-- 站点图标：纸底 + 一枚朱印。
+       2026-11 之前这里是「暗底 + 橙色钢琴键」（#ff5a1f），
+       和站内的纸墨 / 朱红是两套完全不同的语言，缩小到 16px 只剩一个橙点。
+       现在与 app/apple-icon.png、icon-192/512 同一套构图：米白纸、朱印、纸白的「余」。 -->
+  <rect width="64" height="64" rx="13" fill="#F2ECE1"/>
+  <rect x="9" y="9" width="46" height="46" rx="6" fill="#9E3B2E"/>
+  <text x="32" y="33" text-anchor="middle" dominant-baseline="central"
+        font-family="Songti SC, SimSun, STSong, serif" font-size="29"
+        font-weight="700" fill="#F2ECE1">余</text>
 </svg>

@@ -18,6 +18,8 @@ interface Reply {
   avatar?: number
   /* 云端 id 唯一；时间戳 d 可能同毫秒撞车，不能当主键 */
   id?: number
+  /* 回复的是谁的楼中楼：二级回复被压平后，靠它保留「回的是哪句」 */
+  to?: string
 }
 
 interface CommentItem {
@@ -40,20 +42,23 @@ interface CloudComment {
   createdAt: number
 }
 
-/* 头像不再自动哈希生成——读者从这 12 个里挑一个，名字和颜色固定成对 */
+/* 头像不再自动哈希生成——读者从这 12 个里挑一个，名字和颜色固定成对。
+   配色 2026-11 改：原先 12 个 emoji 各配一个高饱和色（橙 / 紫 / 天蓝 / 荧光绿），
+   一屏 12 个色块直接把「单一强调色」的纪律冲掉了。
+   现在只留朱印色相 + 纸墨的暖灰，靠明度区分 12 档，动物靠 emoji 本身辨认。 */
 const AVATARS: Array<{ emoji: string; color: string }> = [
-  { emoji: '🦊', color: '#ff6a3d' },
-  { emoji: '🐱', color: '#ffb020' },
-  { emoji: '🐻', color: '#a4703d' },
-  { emoji: '🐸', color: '#a0d860' },
-  { emoji: '🐼', color: '#8b7bff' },
-  { emoji: '🐙', color: '#ff5d8f' },
-  { emoji: '🦉', color: '#3fb6ff' },
-  { emoji: '🐰', color: '#f7b3c8' },
-  { emoji: '🐯', color: '#e8a34d' },
-  { emoji: '🦄', color: '#b98ff2' },
-  { emoji: '🐳', color: '#5ad0e8' },
-  { emoji: '🦋', color: '#7ee081' },
+  { emoji: '🦊', color: '#b7583f' },
+  { emoji: '🐱', color: '#a0522d' },
+  { emoji: '🐻', color: '#8a6a4a' },
+  { emoji: '🐸', color: '#6f7a52' },
+  { emoji: '🐼', color: '#5c5a55' },
+  { emoji: '🐙', color: '#8f4a52' },
+  { emoji: '🦉', color: '#6b6459' },
+  { emoji: '🐰', color: '#a8836f' },
+  { emoji: '🐯', color: '#9a6b34' },
+  { emoji: '🦄', color: '#7d6a72' },
+  { emoji: '🐳', color: '#4f6a70' },
+  { emoji: '🦋', color: '#5f7358' },
 ]
 const NAME_KEY = 'embers_cmt_name'
 const AVATAR_KEY = 'embers_cmt_avatar'
@@ -155,10 +160,17 @@ export function Comments({ slug }: { slug: string }) {
   const [replyText, setReplyText] = useState('')
   const [confirmDel, setConfirmDel] = useState<number | null>(null)
   const [secrets, setSecrets] = useState<Record<string, string>>({})
+  /* sending 同时用 state（驱动 UI）和 ref（真正拦重复请求）。
+     只靠 state 不够：setSending(true) 要等下一次渲染才生效，
+     同一 tick 内的双击 / Ctrl+Enter 会各发一条 POST。 */
+  const sendingRef = useRef(false)
+  const sentTimer = useRef<number | undefined>(undefined)
   const [err, setErr] = useState('')
   const [loading, setLoading] = useState(true)
 
   const SECRETS_KEY = `embers_cmt_secret_${slug}`
+
+  useEffect(() => () => clearTimeout(sentTimer.current), [])
 
   /* 昵称与头像：说过 / 选过一次就记住 */
   useEffect(() => {
@@ -203,16 +215,34 @@ export function Comments({ slug }: { slug: string }) {
   const ownSecret = (c: CommentItem): string | undefined =>
     c.id && secrets[String(c.id)] ? secrets[String(c.id)] : undefined
 
-  /* 云端扁平列表 → 树（回复归位到父评论的 r 里），新的在前 */
+  /* 云端扁平列表 → 两层树（回复归位到父评论的 r 里），新的在前。
+     原实现只把 replyTo 指向「已存在的顶层评论」的回复挂上去：
+       · 回复一条回复时，byId 里存的是那条回复自己（它的 r 从不渲染），回复直接丢失；
+       · 父评论被 LIMIT 截断时，回复被当成一条独立留言（内容读起来像自言自语）。
+     现在用 rootOf 记录「任意一条属于哪个顶层」，二级回复一律压平进同一层，
+     并带上 to（被回复者的名字），信息不丢、层级不深。 */
   const toTree = (flat: CloudComment[]): CommentItem[] => {
     const top: CommentItem[] = []
-    const byId = new Map<number, CommentItem>()
+    const rootOf = new Map<number, CommentItem>()
+    const nameOf = new Map<number, string>()
     for (const f of flat) {
-      const item: CommentItem = { n: f.name, t: f.body, d: f.createdAt, r: [], id: f.id, avatar: f.avatar }
-      const parent = f.replyTo ? byId.get(f.replyTo) : undefined
-      if (parent) parent.r.push({ n: item.n, t: item.t, d: item.d, avatar: item.avatar ?? undefined, id: item.id })
-      else top.push(item)
-      byId.set(f.id, item)
+      const root = f.replyTo ? rootOf.get(f.replyTo) : undefined
+      if (root) {
+        root.r.push({
+          n: f.name,
+          t: f.body,
+          d: f.createdAt,
+          avatar: f.avatar ?? undefined,
+          id: f.id,
+          to: f.replyTo ? nameOf.get(f.replyTo) : undefined,
+        })
+        rootOf.set(f.id, root)
+      } else {
+        const item: CommentItem = { n: f.name, t: f.body, d: f.createdAt, r: [], id: f.id, avatar: f.avatar }
+        top.push(item)
+        rootOf.set(f.id, item)
+      }
+      nameOf.set(f.id, f.name)
     }
     return top.reverse()
   }
@@ -231,7 +261,13 @@ export function Comments({ slug }: { slug: string }) {
       /* ignore */
     }
     fetch(`/api/comments?slug=${encodeURIComponent(slug)}${bust ? `&bust=${bust}` : ''}`)
-      .then((r) => r.json())
+      /* 不检查 r.ok 的后果：D1 出问题返回 500 时 r.json() 解析出 {error}，
+         comments 为空数组，界面安静地显示「还没有人说话」——
+         读者以为自己看到的是「没人评论」，其实是我们没读出来。 */
+      .then((r) => {
+        if (!r.ok) throw new Error(`http ${r.status}`)
+        return r.json()
+      })
       .then((j) => {
         if (cancelled) return
         setItems(toTree((j.comments ?? []) as CloudComment[]))
@@ -251,11 +287,12 @@ export function Comments({ slug }: { slug: string }) {
 
   const publish = () => {
     const t = text.trim()
-    if (!t || sending) return
+    if (!t || sendingRef.current) return
     if (avatar === null) {
       setErr('先挑一个头像，再说话')
       return
     }
+    sendingRef.current = true
     setSending(true)
     setErr('')
     fetch('/api/comments', {
@@ -280,10 +317,16 @@ export function Comments({ slug }: { slug: string }) {
         setItems((prev) => [{ n: j.name, t: j.body, d: j.createdAt, r: [], id: j.id, avatar: j.avatar }, ...prev])
         setText('')
         setSent(true)
-        window.setTimeout(() => setSent(false), 1600)
+        /* 存下句柄并在卸载时清掉：原先是裸 setTimeout，
+           组件卸载后仍会 setState（切文章时 React 会报警告） */
+        clearTimeout(sentTimer.current)
+        sentTimer.current = window.setTimeout(() => setSent(false), 1600)
       })
       .catch(() => setErr('网络不通，稍后再试'))
-      .finally(() => setSending(false))
+      .finally(() => {
+        sendingRef.current = false
+        setSending(false)
+      })
   }
 
   const replyTo = (d: number) => {
@@ -298,7 +341,7 @@ export function Comments({ slug }: { slug: string }) {
 
   const submitReply = (d: number) => {
     const t = replyText.trim()
-    if (!t || sending) return
+    if (!t || sendingRef.current) return
     if (avatar === null) {
       setErr('先挑一个头像，再说话')
       return
@@ -308,6 +351,7 @@ export function Comments({ slug }: { slug: string }) {
       setErr('要回复的评论已不存在')
       return
     }
+    sendingRef.current = true
     setSending(true)
     setErr('')
     fetch('/api/comments', {
@@ -333,7 +377,10 @@ export function Comments({ slug }: { slug: string }) {
         setReplyText('')
       })
       .catch(() => setErr('网络不通，稍后再试'))
-      .finally(() => setSending(false))
+      .finally(() => {
+        sendingRef.current = false
+        setSending(false)
+      })
   }
 
   const remove = (d: number) => {
@@ -343,7 +390,11 @@ export function Comments({ slug }: { slug: string }) {
       setErr('删除失败')
       return
     }
-    fetch(`/api/comments?id=${target.id}&secret=${encodeURIComponent(secret)}`, { method: 'DELETE' })
+    /* 凭据放请求头，不进 URL：URL 会落进 Cloudflare 日志、浏览器历史和 Referer */
+    fetch(`/api/comments?id=${target.id}`, {
+      method: 'DELETE',
+      headers: { 'x-ember-secret': secret },
+    })
       .then((r) => {
         if (!r.ok) setErr('删除失败')
         else setItems((prev) => prev.filter((c) => (c.id ?? c.d) !== d))
@@ -622,6 +673,11 @@ export function Comments({ slug }: { slug: string }) {
                                   <span className="text-[12px] font-medium text-[var(--ink)] truncate max-w-[8rem]">
                                     {x.n}
                                   </span>
+                                  {x.to && (
+                                    <span className="text-[11px] text-[var(--ink-tertiary)] truncate max-w-[7rem]">
+                                      回复 {x.to}
+                                    </span>
+                                  )}
                                   <time
                                     dateTime={new Date(x.d).toISOString()}
                                     className="text-[10px] font-mono text-[var(--ink-tertiary)]"

@@ -2,7 +2,7 @@ import { Navbar } from '@/components/Navbar'
 import { Footer } from '@/components/Footer'
 import { AuroraBackground } from '@/components/AuroraBackground'
 import { AboutSection } from '@/components/AboutSection'
-import { ChangelogPanel } from '@/components/ChangelogPanel'
+import { ChangelogTimeline } from '@/components/ChangelogTimeline'
 
 export const metadata = {
   title: '关于 — 余烬 EMBERS',
@@ -16,9 +16,9 @@ export default function AboutPage() {
       <AuroraBackground />
       <Navbar />
       <AboutSection />
-      <div className="px-6 pb-24">
-        <div className="max-w-5xl mx-auto">
-          <ChangelogPanel />
+      <div className="px-6 pb-28">
+        <div className="max-w-3xl mx-auto">
+          <ChangelogTimeline />
         </div>
       </div>
       <Footer />

@@ -34,8 +34,36 @@ interface OmResponse {
 }
 
 interface WttrResponse {
-  current_condition?: Array<{ temp_C?: string; FeelsLikeC?: string; windspeedKmph?: string }>
+  current_condition?: Array<{
+    temp_C?: string
+    FeelsLikeC?: string
+    windspeedKmph?: string
+    weatherCode?: string
+  }>
   weather?: Array<{ mintempC?: string; maxtempC?: string }>
+}
+
+/* wttr.in 用的是 WWO 天气码，不是 WMO。直接把 296 丢给 lib/weather.ts 的
+   WMO 判据，等于所有雨雪雷雾都不匹配——备源时提醒永远不出现。
+   这里只把「会触发提醒」的那几档折成对应 WMO 码，其余一律 0（晴）。 */
+function wwoToWmo(wwo: number): number {
+  if (!Number.isFinite(wwo)) return 0
+  if (wwo === 113) return 0
+  if (wwo === 116) return 2
+  if (wwo === 119 || wwo === 122) return 3
+  if (wwo === 143 || wwo === 248 || wwo === 260) return 45
+  if (wwo === 200 || wwo === 386 || wwo === 389 || wwo === 392 || wwo === 395) return 95
+  if ([179, 182, 227, 230, 320, 323, 326, 329, 332, 335, 338, 350, 368, 371, 374, 377].includes(wwo)) return 73
+  if ([176, 185, 263, 266, 281, 284, 293, 296, 299, 302, 305, 308, 311, 314, 353, 356, 359, 362, 365].includes(wwo))
+    return 65
+  return 0
+}
+
+/* 0 也是合法温度：`Number(x) || undefined` 会把 0°C 当假值丢掉，
+   于是「今天 0°」变成「今天 NaN」——用一个显式的有限性判断。 */
+function numOrUndef(v: unknown): number | undefined {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : undefined
 }
 
 /* 县级地名反查：Cloudflare 的 cf.city 通常只到地级市，
@@ -157,15 +185,16 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
     }
   }
 
-  /* 备源只取温度：wttr.in 的天气码不是 WMO 编码，不硬猜 */
+  /* 备源：温度、体感、天气码、风速都取；天气码按 WWO→WMO 折算，
+     否则 lib/weather.ts 的雨雪雷雾提醒在降级时永远不会出现。 */
   const backup = await fetchWithTimeout(`https://wttr.in/${lat.toFixed(3)},${lon.toFixed(3)}?format=j1`, 4500)
   if (backup) {
     try {
       const d = (await backup.json()) as WttrResponse
       const c = d.current_condition?.[0]
-      const temp = Number(c?.temp_C)
-      const feels = Number(c?.FeelsLikeC)
-      if (Number.isFinite(temp)) {
+      const temp = numOrUndef(c?.temp_C)
+      const feels = numOrUndef(c?.FeelsLikeC)
+      if (typeof temp === 'number') {
         return json({
           ok: true,
           city: '',
@@ -173,9 +202,11 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
           place: displayPlace || (await countyPromise),
           geoSource,
           temp,
-          feels: Number.isFinite(feels) ? feels : temp,
-          min: Number(d.weather?.[0]?.mintempC) || undefined,
-          max: Number(d.weather?.[0]?.maxtempC) || undefined,
+          feels: typeof feels === 'number' ? feels : temp,
+          code: wwoToWmo(numOrUndef(c?.weatherCode) ?? 0),
+          wind: numOrUndef(c?.windspeedKmph) ?? 0,
+          min: numOrUndef(d.weather?.[0]?.mintempC),
+          max: numOrUndef(d.weather?.[0]?.maxtempC),
         })
       }
     } catch {

@@ -8,6 +8,7 @@ import { HeroArt } from './HeroArt'
 import { HeroWordmark } from './hero/Wordmark'
 import { EmberRest } from './hero/EmberRest'
 import { ArrowDown } from 'lucide-react'
+import Link from 'next/link'
 import { useIdle } from '@/hooks/useIdle'
 import { useParallax } from '@/hooks/useParallax'
 import { useWeatherLine } from '@/hooks/useWeather'
@@ -201,12 +202,15 @@ export function Hero() {
             transition={{ duration: 0.9, delay: 0.45, ease: EASE }}
             className="mt-12 flex flex-col sm:flex-row items-stretch sm:items-start gap-3 sm:gap-5"
           >
-            <a href="/blog/" className="btn-primary px-9 py-4 text-[15px] font-semibold tracking-wide text-center">
+            {/* 首屏这两个按钮是全站最常点的地方，原来用 <a> 是整页刷新：
+                墨染过渡、滚动位置、播放器状态全部丢掉，白屏一下再重来。
+                换成 Link 才是客户端路由。 */}
+            <Link href="/blog/" className="btn-primary px-9 py-4 text-[15px] font-semibold tracking-wide text-center">
               阅读文章 → 观烬手记
-            </a>
-            <a href="/contact/" className="btn-secondary px-9 py-4 text-[15px] font-semibold tracking-wide text-center">
+            </Link>
+            <Link href="/contact/" className="btn-secondary px-9 py-4 text-[15px] font-semibold tracking-wide text-center">
               联系我
-            </a>
+            </Link>
           </m.div>
 
           {/* 落款：把首页当成一封摊开的信 */}

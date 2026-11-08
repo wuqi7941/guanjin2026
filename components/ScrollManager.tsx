@@ -39,7 +39,15 @@ export function ScrollManager() {
 
   /* 恢复本页上次滚动位置 */
   useEffect(() => {
-    const saved = sessionStorage.getItem(STORE_KEY)
+    /* getItem 本身就可能抛：Safari 无痕 / 部分 WebView 里访问 sessionStorage 直接
+       SecurityError。原先把这次读取放在 try 外面，一旦抛错整个 effect 报错，
+       连「删除已用的位置」都做不到。 */
+    let saved: string | null = null
+    try {
+      saved = sessionStorage.getItem(STORE_KEY)
+    } catch {
+      return
+    }
     if (saved) {
       try {
         const parsed: unknown = JSON.parse(saved)

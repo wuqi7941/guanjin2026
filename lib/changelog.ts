@@ -10,6 +10,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-11-09',
+    title: '一次大扫除：更暗、更快、也更一致',
+    items: [
+      '默认主题跟着系统走——系统是深色，第一眼就是夜墨纸；想固定哪一档，右上角选一次即可。',
+      '首页从六条横条收到四条：只留最新一篇、小说、最近三篇和续读入口。',
+      '代码高亮的字体、按钮、头像都收进同一套朱印色，不再东一块橙、西一块紫。',
+      '评论的楼中楼不再丢；删自己的留言不必再把凭据挂在网址上。',
+      '文章里的年龄统一成十六岁，几篇收不到结尾的摘要也补全了。',
+    ],
+  },
+  {
     date: '2026-11-08',
     title: '首页会看一眼你那边的天气',
     items: [
@@ -306,8 +317,10 @@ export const CHANGELOG: ChangelogEntry[] = [
 ]
 
 /* 显式版本号：同一天可以有多条记录，靠它区分「看过哪一版」。
-   加新条目时手动改这里（消费方是 ChangelogPanel 的首次来访提示）。 */
-export const CHANGELOG_VERSION = '2026-11-08-minimal'
+   加新条目时手动改这里。注意：ChangelogPanel（首次来访的浮层提示）已在
+   2026-11-08 撤掉，现在没有消费方读这个常量——保留它是为了记录与对比，
+   别以为改了它读者就会收到提示。 */
+export const CHANGELOG_VERSION = '2026-11-09-tidy'
 
 /* 同一天的多条记录合并为一条展示（一天只一张纸）：
    title 取当天首条，items 顺次拼接。原始 CHANGELOG 保持录入粒度不变。 */

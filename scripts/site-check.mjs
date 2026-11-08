@@ -9,7 +9,7 @@
  *   2. 每篇文章的分享卡 og/<slug>.png 是否存在
  *   3. sitemap.xml 每个 <loc>、feed.xml 每个 <link> 是否落到真实页面
  *   4. search-index.json 的 slug 是否都有页面、标题是否还错写成 slug
- *   5. daily-lines.json / manifest.webmanifest 可解析，PWA 图标存在
+ *   5. manifest.webmanifest 可解析，PWA 图标存在
  *   6. _headers 的关键缓存与安全规则是否还在（改配置时最容易被顺手删掉）
  *   7. 本轮功能是否真的进了产物（JS/CSS/HTML 字符串核验）
  *
@@ -42,6 +42,16 @@ const walk = (dir, out = []) => {
 const all = walk(DIST).map((p) => path.relative(DIST, p).replace(/\\/g, '/'))
 const has = (rel) => all.includes(rel)
 const read = (rel) => fs.readFileSync(path.join(DIST, rel), 'utf8')
+/* 产物 JSON 解析失败要记成一项 FAIL，而不是让整个脚本抛异常退出——
+   抛异常时前面已经通过的检查也一起看不到了，排查时容易误判成「脚本坏了」。 */
+const readJSON = (rel) => {
+  try {
+    return JSON.parse(read(rel))
+  } catch (e) {
+    check(false, `${rel} 可解析为 JSON`, String(e.message).slice(0, 60))
+    return null
+  }
+}
 const htmls = all.filter((f) => f.endsWith('.html'))
 const jsCss = all.filter((f) => /\.(js|css)$/.test(f))
 const bundle = jsCss.map((f) => read(f)).join('\n')
@@ -77,7 +87,9 @@ let linkCount = 0
 const broken = new Set()
 for (const h of htmls) {
   const s = read(h)
-  for (const m of s.matchAll(/(?:href|src)="([^"]+)"/g)) {
+  /* 属性值可能是单引号（Next 生成的 JSON-LD / 内联片段里就有），
+     只匹配双引号会把它们整批漏检。 */
+  for (const m of s.matchAll(/(?:href|src)=["']([^"']+)["']/g)) {
     const href = m[1]
     if (/^(https?:|mailto:|tel:|data:|#|javascript:)/i.test(href)) continue
     if (href.startsWith('//')) continue
@@ -124,18 +136,22 @@ check(feedLinks.length > 0 && badFeed.length === 0, 'RSS 每条链接有效', `$
 check(read('robots.txt').includes(`${SITE_URL}/sitemap.xml`), 'robots 指向 sitemap')
 
 /* ── 4. 搜索索引 ── */
-const idx = JSON.parse(read('search-index.json'))
-check(Array.isArray(idx) && idx.length === posts.length, '搜索索引条数与文章数一致', `${idx.length} / ${posts.length}`)
-const badIdx = idx.filter((d) => !d.slug || !d.title || d.title === d.slug || !has(`blog/${d.slug}/index.html`))
-check(badIdx.length === 0, '索引 slug/标题/页面三者一致', `异常 ${badIdx.length}`)
-const daily = JSON.parse(read('daily-lines.json'))
-check(daily !== null && (Array.isArray(daily) || typeof daily === 'object'), '每日一句 JSON 可解析')
+const idx = readJSON('search-index.json')
+if (idx) {
+  check(Array.isArray(idx) && idx.length === posts.length, '搜索索引条数与文章数一致', `${idx.length} / ${posts.length}`)
+  const badIdx = idx.filter((d) => !d.slug || !d.title || d.title === d.slug || !has(`blog/${d.slug}/index.html`))
+  check(badIdx.length === 0, '索引 slug/标题/页面三者一致', `异常 ${badIdx.length}`)
+  /* 索引必须带正文：只有标题的话搜索等于摆设 */
+  check(idx.every((d) => typeof d.body === 'string' && d.body.length > 40), '搜索索引带正文片段')
+}
 
 /* ── 5. PWA ── */
-const manifest = JSON.parse(read('manifest.webmanifest'))
-const missIcons = manifest.icons.filter((i) => !has(i.src.replace(/^\//, '')))
-check(missIcons.length === 0, 'PWA 图标存在', `${manifest.icons.length} 个`)
-check(manifest.start_url === '/' && manifest.scope === '/', 'PWA start_url / scope 正确')
+const manifest = readJSON('manifest.webmanifest')
+if (manifest) {
+  const missIcons = manifest.icons.filter((i) => !has(i.src.replace(/^\//, '')))
+  check(missIcons.length === 0, 'PWA 图标存在', `${manifest.icons.length} 个`)
+  check(manifest.start_url === '/' && manifest.scope === '/', 'PWA start_url / scope 正确')
+}
 
 /* ── 6. 响应头配置 ── */
 const headers = fs.readFileSync(path.join(ROOT, 'public', '_headers'), 'utf8')
@@ -209,18 +225,48 @@ check(
   '打字机始终逐字输出 + 视口兜底',
 )
 const homeSrc = fs.readFileSync(path.join(ROOT, 'app/page.tsx'), 'utf8')
-check(
-  homeSrc.includes('<ResumeBanner items={lite}') && homeSrc.includes('<AnniversaryStrip posts={lite}'),
-  '首页 212 条数据共用同一引用（RSC 去重）',
-)
+check(homeSrc.includes('<ResumeBanner items={lite}'), '首页 212 条数据只序列化一次（RSC 去重）')
 check(
   !srcHas('components/WeatherPlace.tsx') &&
     !srcHas('components/ExhibitMarquee.tsx') &&
     !srcHas('components/GlowFollow.tsx') &&
+    !srcHas('components/ChangelogPanel.tsx') &&
+    !srcHas('components/AnniversaryStrip.tsx') &&
+    !srcHas('components/DailyLine.tsx') &&
     !homeSrc.includes('ExhibitMarquee'),
-  '位置输入 / 跑马灯 / 跟随光晕已移除',
+  '位置输入 / 跑马灯 / 跟随光晕 / 更新浮层 / 周年条 / 每日一句已移除',
 )
 check(!read('index.html').includes('marquee-band'), '首页产物不含跑马灯 DOM')
+/* 首页只留四条：继续阅读 / 最新 / 小说 / 最近文章 */
+/* 继续阅读只在「本地有进度」时才渲染，静态 HTML 里本来就没有它，
+   所以只查三块必现的：最新条、小说海报、最近文章区。 */
+const strips = ['latest-strip', 'novel-poster', 'id="latest"']
+check(
+  strips.every((c) => read('index.html').includes(c)),
+  '首页四条横幅都在',
+  `${strips.length} 条关键类名`,
+)
+check(!css.includes('.marquee-') && !css.includes('.changelog-toast') && !css.includes('.glow-follow'), 'CSS 不再残留已删组件的死规则')
+
+/* ── 12. 主题、权限与数据库脚本 ── */
+check(/geolocation=\(self\)/.test(headers), '_headers 放行同源定位')
+check(
+  /defaultTheme="system"/.test(fs.readFileSync(path.join(ROOT, 'app/providers.tsx'), 'utf8')),
+  '默认主题跟随系统',
+)
+const cssVars = fs.readFileSync(path.join(ROOT, 'app/globals.css'), 'utf8')
+check(
+  cssVars.includes('--ember: var(--accent)') && cssVars.includes('--fire-top: var(--accent)'),
+  '五套暖色已收敛到单一朱印',
+)
+/* 判据是「暗色画布只有一个值」，不是「不许出现 html.dark」——
+   html.dark 里还剩一些针对暗色的单点微调（比如目录厚度的 alpha），那是合理的。 */
+check(!cssVars.includes('#14100c') && !cssVars.includes('#14100C'), '暗色画布只有一套值（不再有 #14100c 补丁）')
+const schema = fs.readFileSync(path.join(ROOT, 'scripts', 'd1-schema.sql'), 'utf8')
+check(/avatar INTEGER/.test(schema), 'D1 建表脚本含 avatar 列')
+const feedSorted = feed.indexOf('<pubDate>')
+check(feedSorted > 0, 'RSS 有 pubDate')
+check(/<lastBuildDate>(?!.*1970)/.test(feed), 'RSS lastBuildDate 有效')
 
 /* ── 汇总 ── */
 console.log(`\n静态产物自检：${all.length} 个文件 / HTML ${htmls.length} 页 / JS-CSS ${jsCss.length} 个`)

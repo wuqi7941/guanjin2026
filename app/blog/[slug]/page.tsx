@@ -4,7 +4,7 @@ import { Footer } from '@/components/Footer'
 import { PostContent } from '@/components/PostContent'
 import { AuroraBackground } from '@/components/AuroraBackground'
 import { SITE } from '@/lib/site'
-import { getAllPosts, getPostBySlug } from '@/lib/posts'
+import { getAllPosts, getPostBySlug, byDateDesc } from '@/lib/posts'
 
 interface BlogPostPageProps {
   params: {
@@ -56,10 +56,15 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
     notFound()
   }
 
-  const posts = getAllPosts()
-  const index = posts.findIndex((p) => p.slug === post.slug)
-  const prev = index > 0 ? posts[index - 1] : null
-  const next = index < posts.length - 1 ? posts[index + 1] : null
+  /* 翻页要按「发布日期」走，不能按目录顺序：目录把小说和置顶得意篇排在最前，
+     拿它做邻居的话，最新那篇文章的「下一篇」会跳到 7 月的置顶篇。
+     所以这里单独按日期排一份，再用它找前后。 */
+  const byDate = [...getAllPosts()].sort(byDateDesc)
+  const index = byDate.findIndex((p) => p.slug === post.slug)
+  /* 「上一篇」在中文博客语境里指更早发布的那篇，所以取数组中更靠后的一条。
+     原来是反的：点「上一篇」会跳到更晚写的文章。 */
+  const prev = index < byDate.length - 1 ? byDate[index + 1] : null
+  const next = index > 0 ? byDate[index - 1] : null
 
   return (
     <main id="main-content" className="relative min-h-screen">
@@ -92,7 +97,7 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
           }).replace(/</g, '\\u003c'),
         }}
       />
-      <PostContent post={post} prev={prev} next={next} num={posts.length - index} />
+      <PostContent post={post} prev={prev} next={next} num={byDate.length - index} />
       <Footer />
     </main>
   )

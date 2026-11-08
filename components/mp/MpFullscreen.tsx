@@ -37,9 +37,13 @@ export function MpFullscreen({
 
   /* 焦点：dialog 打开把焦点交给关闭钮，关闭时还原到触发元素——读屏与键盘才不会掉进虚空 */
   useEffect(() => {
+    /* 同 MpPanel：触发元素可能已卸载，兜底把焦点还给播放条 */
     const opener = document.activeElement as HTMLElement | null
     closeRef.current?.focus()
-    return () => opener?.focus?.()
+    return () => {
+      if (opener && opener.isConnected) opener.focus?.()
+      else document.querySelector<HTMLElement>('.mp-bar-text')?.focus?.()
+    }
   }, [])
 
   /* 拖动中的本地进度：move 只走 UI，松手才 seek（与面板进度条同一套手感） */

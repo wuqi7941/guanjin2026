@@ -856,6 +856,14 @@ function relation(dayWX: string, yearWX: string): { label: string; tone: 'good' 
   return { label: '生我——印星护体', tone: 'good' }
 }
 
+/* 八卦索引：先天数 1–8 依次是乾兑离震巽坎艮坤，索引 = 数 - 1。
+   余数为 0 时按 8 算（坤），这是梅花易数的定规——
+   原先直接 % 8 会得到 0（乾），摇出 8 的人永远错成乾卦。 */
+function guaIdx(n: number): number {
+  const r = ((Math.trunc(n) % 8) + 8) % 8
+  return (r === 0 ? 8 : r) - 1
+}
+
 /* 八卦：先天数 1-8；五行；意象 */
 const TRIGRAMS = [
   { name: '乾', wx: '金', img: '天 · 刚健', read: '纯阳之卦，主刚健主动——局面硬碰硬，宜取势不宜取巧。' },
@@ -927,8 +935,8 @@ export function fullBazi(iso: string, hourIdx: number): FullBazi | null {
   if (hourIdx >= 0) {
     const yearZhiNum = (ZHI_ORDER.indexOf(yr.zhi) + 1 + 12) % 12 || 12
     const hourZhiNum = hourIdx + 1
-    const upperIdx = ((yearZhiNum + mo + d) % 8 + 8) % 8
-    const lowerIdx = ((yearZhiNum + mo + d + hourZhiNum) % 8 + 8) % 8
+    const upperIdx = guaIdx(yearZhiNum + mo + d)
+    const lowerIdx = guaIdx(yearZhiNum + mo + d + hourZhiNum)
     const moving = (((yearZhiNum + mo + d + hourZhiNum) % 6) + 6) % 6 || 6
     const upper = TRIGRAMS[upperIdx]
     const lower = TRIGRAMS[lowerIdx]
@@ -1006,8 +1014,8 @@ export interface MeihuaResult {
 
 export function meihuaNumbers(a: number, b: number, c: number): MeihuaResult | null {
   if (![a, b, c].every((n) => Number.isFinite(n) && n > 0)) return null
-  const upIdx = Math.floor(a) % 8
-  const loIdx = Math.floor(b) % 8
+  const upIdx = guaIdx(a)
+  const loIdx = guaIdx(b)
   const mv = Math.floor(c) % 6 || 6
   const upper = TRIGRAMS[upIdx]
   const lower = TRIGRAMS[loIdx]

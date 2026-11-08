@@ -59,7 +59,11 @@ export function MpBar({ track, cover, playing, pct, onOpen, onToggle, onNext, on
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
     >
       <span className="mp-bar-progress" aria-hidden>
-        <span className="mp-bar-progress-fill" style={{ width: `${pct}%` }} />
+        {/* 进度用 transform: scaleX 表达（--pct 由 pct/100 算出），不再动画 width */}
+        <span
+          className="mp-bar-progress-fill"
+          style={{ ['--pct' as string]: Math.max(0, Math.min(1, pct / 100)).toFixed(4) }}
+        />
       </span>
 
       <button

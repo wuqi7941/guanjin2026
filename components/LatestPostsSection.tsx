@@ -2,6 +2,7 @@
 
 import { EASE } from '@/lib/motion'
 import { m } from 'framer-motion'
+import Link from 'next/link'
 import { ArticleCard } from './ArticleCard'
 import { PostMeta } from '@/types/post'
 
@@ -33,12 +34,13 @@ export function LatestPostsSection({ posts }: LatestPostsSectionProps) {
               最近文章
             </h2>
           </div>
-          <a
+          {/* 站内跳转一律走 Link：用 <a> 会整页重载，墨染过渡和播放器状态都会丢 */}
+          <Link
             href="/blog/"
             className="group shrink-0 text-[var(--ink-muted)] hover:text-[var(--accent)] transition-colors text-sm font-semibold border-b border-[var(--hairline)] pb-1 hover:border-[var(--accent)]"
           >
             查看全部 —— 进入档案库
-          </a>
+          </Link>
         </m.div>
 
         <div className="grid-rhythm">

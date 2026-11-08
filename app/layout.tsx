@@ -17,7 +17,7 @@ import { TitleWhisper } from '@/components/TitleWhisper'
 import { ScrollProgress } from '@/components/ScrollProgress'
 import { QuickNav } from '@/components/QuickNav'
 
-/* 构建期读一次字体样式（33 条 @font-face，约 11.7KB），内联进 <head>。
+/* 构建期读一次字体样式（3 条 @font-face，约 2KB），内联进 <head>。
    静态导出下这是安全的：文件在 public/，构建时必然存在。
    读不到就给空串兜底——字体样式缺失只是退化成系统字体，不该炸掉整个构建。 */
 let FONT_CSS = ''
@@ -84,25 +84,28 @@ export default function RootLayout({
             也彻底绕开「无哈希文件名的 CSS 被边缘缓存锁死」这个坑——
             外链 /fonts/fonts.css 一旦被 CDN 按长 TTL 缓存，改字体要等缓存过期才生效。 */}
         <style dangerouslySetInnerHTML={{ __html: FONT_CSS }} />
-        {/* 首屏标题英文字体预载（Cormorant 拉丁分片，避免标题字体闪烁） */}
+        {/* 首屏标题英文字体预载（Cormorant 拉丁分片，避免标题字体闪烁）。
+            路径必须和 public/fonts/fonts.css 里的 src 一致——字体文件在 2026-11
+            清过一次，只留 500 / 600 / 500i 三档，旧的 co3bm… 文件名已经不存在。 */}
         <link
           rel="preload"
-          href="/fonts/co3bmX5slCNuHLi8bLeY9MK7whWMhyjYqXtK.woff2"
+          href="/fonts/cormorant-600-latin.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"
         />
         <link
           rel="preload"
-          href="/fonts/co3ZmX5slCNuHLi8bLeY9MK7whWMhyjYrEtImSo.woff2"
+          href="/fonts/cormorant-500-74db058fe06d.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"
         />
         {/* iOS：不把长数字识别成电话号码 */}
         <meta name="format-detection" content="telephone=no" />
-        {/* 移动端地址栏配色（默认宣纸色，ThemeColorSync 随主题切换） */}
-        <meta name="theme-color" content="#F2ECE1" />
+        {/* 移动端地址栏配色：默认按系统深浅各给一个，ThemeColorSync 再跟手动切换 */}
+        <meta name="theme-color" content="#17130E" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content="#F2ECE1" media="(prefers-color-scheme: light)" />
         {/* RSS 订阅 */}
         <link rel="alternate" type="application/rss+xml" title="余烬 EMBERS" href="/feed.xml" />
         {/* 音乐源预热：实际播放走 GD Studio（JSONP）→ meting → 网易 CDN，

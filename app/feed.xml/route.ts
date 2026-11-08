@@ -1,4 +1,4 @@
-import { getAllPosts } from '@/lib/posts'
+import { getAllPosts, byDateDesc } from '@/lib/posts'
 import { SITE } from '@/lib/site'
 
 export const dynamic = 'force-static'
@@ -15,10 +15,14 @@ function esc(s: string): string {
 }
 
 export function GET() {
-  const posts = getAllPosts().slice(0, 30)
+  const list = getAllPosts()
+  /* RSS 要「最新 30 篇」。getAllPosts() 是按目录顺序（小说永久第一），
+     slice(0,30) 会把置顶小说和几个置顶得意篇混进最新里，还漏掉真正的新文章。 */
+  const posts = [...list].sort(byDateDesc).slice(0, 30)
   /* lastBuildDate 用最新一篇文章的日期，不是构建时刻——
-     否则每构建一次，所有订阅器都会以为有新内容，是退订率上升的经典原因 */
-  const latest = posts[0]?.date ?? '2026-01-01'
+     否则每构建一次，所有订阅器都会以为有新内容，是退订率上升的经典原因。
+     也不能用 posts[0]，那是置顶篇。 */
+  const latest = list.reduce((max, p) => (p.date > max ? p.date : max), '2026-01-01')
   const items = posts
     .map((post) => {
       const url = `${BASE}/blog/${post.slug}/`

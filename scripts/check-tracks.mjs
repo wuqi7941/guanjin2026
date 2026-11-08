@@ -55,7 +55,9 @@ async function audioSize(url) {
 /* 主源：GD Studio。返回 ok / sample / no-url / unreachable / error */
 async function probeGD(id) {
   try {
-    const r = await fetchWithTimeout(GD(id))
+    /* 线上走的是 JSONP（带 callback 参数），探针也要带同一个参数，
+       否则测的是另一条 URL，拿到的「可用」不能代表浏览器里能播。 */
+    const r = await fetchWithTimeout(GD(id) + '&callback=__probe')
     const j = await r.json()
     if (!j?.url) return { state: 'no-url' }
     const size = await audioSize(j.url)
@@ -85,6 +87,10 @@ const rows = []
 let okCount = 0
 let sampleCount = 0
 let failCount = 0
+/* 主源（GD）拿不到地址 / 报错，但 meting 还能出声：
+   这不算「不可播」，但主源确实失效了，得单独报出来——
+   原先这种行只判 usable，主源挂了一片也看不出来。 */
+let gdDown = 0
 
 /* 简易并发池：88 首串行要跑几分钟，6 路并发把耗时压到 30 秒内 */
 let cursor = 0
@@ -94,6 +100,7 @@ async function worker() {
     const tr = tracks[i]
     const [gd, mt] = await Promise.all([probeGD(tr.id), probeMeting(tr.id)])
     const usable = gd.state === 'ok' || mt.state === 'ok'
+    if (gd.state === 'no-url' || gd.state === 'error' || gd.state === 'unreachable') gdDown++
     if (gd.state === 'ok') okCount++
     else if (gd.state === 'sample') sampleCount++
     else if (!usable) failCount++
@@ -108,6 +115,9 @@ async function worker() {
 await Promise.all(Array.from({ length: CONCURRENCY }, worker))
 
 console.log(`\n共 ${tracks.length} 首 | 完整 ${okCount} | 只有试听 ${sampleCount} | 完全不可播 ${failCount}`)
+if (gdDown) {
+  console.log(`  ⚠ 其中 ${gdDown} 首的主源（GD Studio）不可用，只能退到 meting 试听源`)
+}
 
 fs.mkdirSync(path.join(ROOT, '.backup'), { recursive: true })
 fs.writeFileSync(

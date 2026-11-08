@@ -22,7 +22,9 @@ export function TagFilter({ tags, active, onSelect }: TagFilterProps) {
   const activeTag = tags.find((t) => t.name === active)
   const list =
     activeTag && !base.some((t) => t.name === activeTag.name) ? [...base, activeTag] : base
-  const hiddenCount = tags.length - base.length
+  /* 按 list 算：激活的分区如果不在前 N 个里会被追加进 list，
+     用 base 算「更多分区 +N」会比实际多一个。 */
+  const hiddenCount = tags.length - list.length
 
   const options: Array<TagCount & { total?: boolean }> = [
     { name: '全部', count: 0, total: true },

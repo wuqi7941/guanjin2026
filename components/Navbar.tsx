@@ -170,10 +170,14 @@ export function Navbar() {
           <m.div
             id="mobile-menu"
             ref={menuRef}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2, ease: EASE }}
+            /* 只动 transform 与 opacity。原先动画 height: 0 → auto：
+               auto 不可插值，framer 只能每帧量一次布局再写回去，
+               展开过程中整个导航（含 fixed 层）都要重排。
+               去掉高度动画后菜单按最终高度直接淡入并轻微下移，手感更利落。 */
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18, ease: EASE }}
             className="sm:hidden overflow-hidden glass-nav"
           >
             <ul className="px-6 py-4 space-y-1">
