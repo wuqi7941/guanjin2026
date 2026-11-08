@@ -117,20 +117,14 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
     Math.abs(qLat) <= 90 &&
     Math.abs(qLon) <= 180
 
-  const cf = (request as Request & { cf?: CfGeo }).cf
-  const ipLat = Number(cf?.latitude)
-  const ipLon = Number(cf?.longitude)
-  const lat = hasCoords ? qLat : ipLat
-  const lon = hasCoords ? qLon : ipLon
-  /* 本地 dev / 边缘没给地理信息时不猜城市，直接降级 */
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
-    return json({ ok: false, reason: 'no-geo' })
-  }
+  /* 不再拿出口 IP 猜位置：代理 / NAT 会把人算到外省。
+     前端没给可信坐标就直接降级，天气整条不显示。 */
+  if (!hasCoords) return json({ ok: false, reason: 'no-permission' })
+  const lat = qLat
+  const lon = qLon
 
-  /* IP 出口定位会被代理 / 运营商 NAT 带偏（人在广西，出口可能在江苏），
-     所以只有「浏览器已授权定位」或「手动指定地区」才显示地名。
-     纯 IP 回退只给温度，句子说「你那边」，绝不报一个错的区县。 */
-  const geoSource = hasCoords ? (place ? 'manual' : 'coords') : 'ip'
+  /* 只用可信坐标：手动指定显示用户写的县名，浏览器授权定位反查县级。 */
+  const geoSource = place ? 'manual' : 'coords'
   const displayPlace = place ? simplify(place) : ''
   const q = `latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}`
   /* 地名反查与天气查询并行；手动指定时不用反查，IP 回退时不反查 */
@@ -146,7 +140,7 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
       if (cur && typeof cur.temperature_2m === 'number' && Number.isFinite(cur.temperature_2m)) {
         return json({
           ok: true,
-          city: hasCoords ? (cf?.city ?? '') : '',
+          city: '',
           county: await countyPromise,
           place: displayPlace || (await countyPromise),
           geoSource,
@@ -174,7 +168,7 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
       if (Number.isFinite(temp)) {
         return json({
           ok: true,
-          city: hasCoords ? (cf?.city ?? '') : '',
+          city: '',
           county: await countyPromise,
           place: displayPlace || (await countyPromise),
           geoSource,

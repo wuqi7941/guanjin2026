@@ -2281,15 +2281,7 @@ body {
   opacity: 0.9;
 }
 .field-input:focus ~ .field-label { color: var(--accent); }
-/* 搜索框透明无边框，只借这套浮动排版 */
-.search-input-row { position: relative; }
-.search-input { padding-top: 1.05rem; padding-bottom: 0.1rem; }
-.search-float { left: 2.6rem; top: 1rem; }
-.search-input:focus ~ .search-float,
-.search-input:not(:placeholder-shown) ~ .search-float {
-  transform: translateY(-0.7rem) scale(0.82);
-  opacity: 0.85;
-}
+/* 搜索索引保持普通 placeholder：它是查东西的，不是填表，不套浮动标签 */
 
 .search-input-row {
   display: flex;

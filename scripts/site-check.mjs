@@ -197,18 +197,30 @@ check(
   '统计页两个主框进产物',
 )
 
-/* ── 11. 地区纠偏与打字机轮播 ── */
-check(srcHas('functions/api/geo.ts') && srcHas('components/WeatherPlace.tsx'), '地名查询端点与地区纠正组件存在')
+/* ── 11. 定位、打字机与极简收敛 ── */
+check(srcHas('functions/api/geo.ts'), '地名查询端点存在')
 const geoSrc = fs.readFileSync(path.join(ROOT, 'functions/api/geo.ts'), 'utf8')
 check(geoSrc.includes('Array.from(new Set') && geoSrc.includes('suffix'), '地名查询支持去后缀重试与县级名补全')
 const weatherSrc = fs.readFileSync(path.join(ROOT, 'functions/api/weather.ts'), 'utf8')
-check(weatherSrc.includes('geoSource') && weatherSrc.includes("'ip'"), '天气端点区分定位来源')
+check(weatherSrc.includes('no-permission'), '无坐标时天气端点直接降级（不再猜出口 IP）')
 const twSrc = fs.readFileSync(path.join(ROOT, 'components/Typewriter.tsx'), 'utf8')
-check(twSrc.includes('bootVisible') && twSrc.includes('pauseDuration + 1400'), '打字机有视口兜底与减动轮播')
 check(
-  bundle.includes('地区不对？改一下') || htmls.some((h) => read(h).includes('地区不对？改一下')),
-  '地区入口进产物',
+  twSrc.includes('bootVisible') && twSrc.includes("useState('')") && !twSrc.includes('useReducedMotion'),
+  '打字机始终逐字输出 + 视口兜底',
 )
+const homeSrc = fs.readFileSync(path.join(ROOT, 'app/page.tsx'), 'utf8')
+check(
+  homeSrc.includes('<ResumeBanner items={lite}') && homeSrc.includes('<AnniversaryStrip posts={lite}'),
+  '首页 212 条数据共用同一引用（RSC 去重）',
+)
+check(
+  !srcHas('components/WeatherPlace.tsx') &&
+    !srcHas('components/ExhibitMarquee.tsx') &&
+    !srcHas('components/GlowFollow.tsx') &&
+    !homeSrc.includes('ExhibitMarquee'),
+  '位置输入 / 跑马灯 / 跟随光晕已移除',
+)
+check(!read('index.html').includes('marquee-band'), '首页产物不含跑马灯 DOM')
 
 /* ── 汇总 ── */
 console.log(`\n静态产物自检：${all.length} 个文件 / HTML ${htmls.length} 页 / JS-CSS ${jsCss.length} 个`)

@@ -649,25 +649,21 @@ export function Comments({ slug }: { slug: string }) {
                           }}
                           className="mt-2.5 ml-4 flex gap-2 items-start"
                         >
-                          <div className="field flex-1 min-w-0">
-                            <input
-                              id={`cmt-reply-${uid}`}
-                              value={replyText}
-                              onChange={(e) => setReplyText(e.target.value)}
-                              onKeyDown={(e) => {
-                                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                                  e.preventDefault()
-                                  submitReply(uid)
-                                }
-                              }}
-                              maxLength={200}
-                              placeholder=" "
-                              className="field-input"
-                            />
-                            <label htmlFor={`cmt-reply-${uid}`} className="field-label">
-                              回复…
-                            </label>
-                          </div>
+                          {/* 单行小回复框保持普通 placeholder，浮动标签留给真正的表单 */}
+                          <input
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                                e.preventDefault()
+                                submitReply(uid)
+                              }
+                            }}
+                            maxLength={200}
+                            placeholder="回复…"
+                            aria-label="回复内容"
+                            className="flex-1 min-w-0 px-3 py-2 rounded-[var(--radius-md)] text-[16px] sm:text-[13px] bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
+                          />
                           <button
                             type="submit"
                             disabled={!replyText.trim()}

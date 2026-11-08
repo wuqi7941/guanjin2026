@@ -11,7 +11,6 @@ import { ArrowDown } from 'lucide-react'
 import { useIdle } from '@/hooks/useIdle'
 import { useParallax } from '@/hooks/useParallax'
 import { useWeatherLine } from '@/hooks/useWeather'
-import { WeatherPlace } from './WeatherPlace'
 import { collectEgg, isNightNow } from '@/lib/eggs'
 import { chime } from '@/lib/sound'
 import {
@@ -72,13 +71,18 @@ export function Hero() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [night, phaseLine])
 
-  /* 天气句异步到达时只插在时段句后面，不重洗随机队列——
-     否则一次 fetch 就会把整轮句子换掉，正在打的字也要重来。 */
-  const { line: weatherLine, place: weatherPlace, setPlace: setWeatherPlace } = useWeatherLine()
-  const texts = useMemo(
-    () => (weatherLine ? [baseTexts[0], weatherLine, ...baseTexts.slice(1)] : baseTexts),
-    [baseTexts, weatherLine],
-  )
+  /* 天气循环：拿到可信坐标后每 4 句插一条天气句，两条文案交替出现；
+     单独拼接，不重洗随机队列。拒绝权限时 lines 为空，打字机照常播原句。 */
+  const { lines: weatherLines } = useWeatherLine()
+  const texts = useMemo(() => {
+    if (!weatherLines.length) return baseTexts
+    const out: string[] = []
+    baseTexts.forEach((t, i) => {
+      out.push(t)
+      if (i % 4 === 0) out.push(weatherLines[Math.floor(i / 4) % weatherLines.length])
+    })
+    return out
+  }, [baseTexts, weatherLines])
 
   /* 打字机触发词命中：收集「火苗」+ 唤一阵叶子雨 */
   const onTypeTrigger = useCallback(() => {
@@ -190,8 +194,6 @@ export function Hero() {
               pauseDuration={2400}
             />
           </m.div>
-
-          <WeatherPlace place={weatherPlace} onSet={setWeatherPlace} />
 
           <m.div
             initial={{ opacity: 0, y: 20 }}

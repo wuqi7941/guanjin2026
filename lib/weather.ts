@@ -18,47 +18,6 @@ export interface WeatherData {
   wind?: number
 }
 
-/* Cloudflare 边缘给的 city 是英文。常见城市翻成中文，其余一律说「你那边」——
-   与其把 "Springfield" 硬塞进中文句子，不如不写地名。 */
-const CITY_CN: Record<string, string> = {
-  Beijing: '北京',
-  Shanghai: '上海',
-  Guangzhou: '广州',
-  Shenzhen: '深圳',
-  Hangzhou: '杭州',
-  Chengdu: '成都',
-  Wuhan: '武汉',
-  "Xi'an": '西安',
-  Xian: '西安',
-  Nanjing: '南京',
-  Chongqing: '重庆',
-  Tianjin: '天津',
-  Suzhou: '苏州',
-  Zhengzhou: '郑州',
-  Changsha: '长沙',
-  Qingdao: '青岛',
-  Shenyang: '沈阳',
-  Dalian: '大连',
-  Jinan: '济南',
-  Hefei: '合肥',
-  Fuzhou: '福州',
-  Xiamen: '厦门',
-  Kunming: '昆明',
-  Harbin: '哈尔滨',
-  Nanchang: '南昌',
-  Guiyang: '贵阳',
-  Lanzhou: '兰州',
-  Taiyuan: '太原',
-  Shijiazhuang: '石家庄',
-  Nanning: '南宁',
-  Haikou: '海口',
-  Urumqi: '乌鲁木齐',
-  'Hong Kong': '中国香港',
-  Macao: '中国澳门',
-  Macau: '中国澳门',
-  Taipei: '中国台北',
-}
-
 function placeOf(d: WeatherData): string {
   /* 自己指定的地名最可信，优先用 */
   const manual = typeof d.place === 'string' ? d.place.trim() : ''
@@ -68,8 +27,8 @@ function placeOf(d: WeatherData): string {
   if (d.geoSource !== 'coords' && d.geoSource !== 'manual') return '你那边'
   const county = typeof d.county === 'string' ? d.county.trim() : ''
   if (county && /[\u4e00-\u9fff]/.test(county)) return county.slice(0, 12)
-  if (!d.city) return '你那边'
-  return CITY_CN[d.city] ?? CITY_CN[d.city.trim()] ?? '你那边'
+  /* 反查失败也不退回出口城市名——那又是错的地名 */
+  return '你那边'
 }
 
 /* 保暖/防暑/提醒的句子：每档两句，按日期换着来，别让常客天天读同一句。

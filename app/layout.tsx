@@ -11,7 +11,6 @@ import { PageTransition } from '@/components/PageTransition'
 import { ScrollManager } from '@/components/ScrollManager'
 import { VisitTracker } from '@/components/VisitTracker'
 import { ThemeColorSync } from '@/components/ThemeColorSync'
-import { GlowFollow } from '@/components/GlowFollow'
 import { PaperLight } from '@/components/PaperLight'
 import { CopyGuard } from '@/components/CopyGuard'
 import { TitleWhisper } from '@/components/TitleWhisper'
@@ -123,7 +122,6 @@ export default function RootLayout({
           <PageTransition />
           <ScrollManager />
           <ThemeColorSync />
-          <GlowFollow />
           <PaperLight />
           <CopyGuard />
           <ScrollProgress />

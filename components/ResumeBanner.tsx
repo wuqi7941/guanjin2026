@@ -1,19 +1,20 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { BookOpen } from 'lucide-react'
 import { getResume } from '@/lib/reading'
 
 interface Props {
-  /* slug → 标题，服务端传进来，避免客户端再拉一遍文章库 */
-  titles: Record<string, string>
+  /* 与 AnniversaryStrip 共用同一份轻量数据（同一个引用，RSC 只序列化一次） */
+  items: Array<{ slug: string; title: string }>
 }
 
 /* 「继续阅读」：回访的人不必重新找上次读到哪。
    阈值只在 getResume 里定义一次，这里只判断「有这篇的标题」。
    首帧占一条同高的位置，水合后插入不会再顶动下面的内容。 */
-export function ResumeBanner({ titles }: Props) {
+export function ResumeBanner({ items }: Props) {
+  const titles = useMemo(() => Object.fromEntries(items.map((i) => [i.slug, i.title])), [items])
   const [mounted, setMounted] = useState(false)
   const [resume, setResume] = useState<{ slug: string; p: number } | null>(null)
 

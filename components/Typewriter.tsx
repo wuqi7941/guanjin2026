@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { m, useReducedMotion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { useInView } from '@/hooks/useInView'
 
 interface TypewriterProps {
@@ -38,8 +38,9 @@ export function Typewriter({
   triggers,
   onTrigger,
 }: TypewriterProps) {
-  const reduce = !!useReducedMotion()
-  const [displayText, setDisplayText] = useState(reduce ? texts[0] ?? '' : '')
+  /* 逐字输出是内容呈现，不是装饰动效：系统开了「减少动态效果」也要打出来，
+     否则桌面端看起来就是一句死字。其余装饰动画仍由 CSS 的 reduce 规则管。 */
+  const [displayText, setDisplayText] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
@@ -114,7 +115,7 @@ export function Typewriter({
 
   /* 桌面：未激活时直接敲字符键即进入（不抢空格滚动；输入框/面板占用键盘时不接管） */
   useEffect(() => {
-    if (!interactive || reduce || !inView) return
+    if (!interactive || !inView) return
     if (typeof window === 'undefined') return
     if (!window.matchMedia('(pointer: fine)').matches) return
 
@@ -135,7 +136,7 @@ export function Typewriter({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [interactive, reduce, inView, activate])
+  }, [interactive, inView, activate])
 
   /* 卸载时清计时器 */
   useEffect(() => {
@@ -193,24 +194,8 @@ export function Typewriter({
     setIsDeleting(true)
   }, [priority])
 
-  /* 减动用户：不逐字打，但句子照样一句句换——
-     之前这里只铺第一句就 return，等于把「减少动态效果」变成了「只看得到第一句」。 */
+  /* —— 轮播打字状态机：逐字打出 → 停顿 → 逐字删 → 下一句 —— */
   useEffect(() => {
-    if (!reduce) return
-    setDisplayText(effectiveTexts[currentIndex % Math.max(1, effectiveTexts.length)] ?? '')
-  }, [reduce, effectiveTexts, currentIndex])
-
-  useEffect(() => {
-    if (!reduce || !inView || active) return
-    const t = window.setTimeout(() => {
-      setCurrentIndex((i) => (i + 1) % Math.max(1, effectiveTexts.length))
-    }, pauseDuration + 1400)
-    return () => window.clearTimeout(t)
-  }, [reduce, inView, active, effectiveTexts, currentIndex, pauseDuration])
-
-  /* —— 轮播打字状态机 —— */
-  useEffect(() => {
-    if (reduce) return
     if (!inView) return
     if (active) return
     const currentText = effectiveTexts[currentIndex % effectiveTexts.length]
@@ -260,7 +245,7 @@ export function Typewriter({
     }, typingSpeed)
 
     return () => clearTimeout(typeTimer)
-  }, [displayText, currentIndex, isDeleting, isPaused, effectiveTexts, typingSpeed, deletingSpeed, pauseDuration, inView, reduce, active])
+  }, [displayText, currentIndex, isDeleting, isPaused, effectiveTexts, typingSpeed, deletingSpeed, pauseDuration, inView, active])
 
   return (
     <span
@@ -281,7 +266,7 @@ export function Typewriter({
         <span className="inline-flex items-baseline">
           <span>{displayText}</span>
           <m.span
-            animate={!reduce && inView ? { opacity: [1, 0] } : undefined}
+            animate={inView ? { opacity: [1, 0] } : undefined}
             transition={{ duration: 0.6, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
             className="inline-block w-[3px] h-[1em] bg-current ml-1 align-middle"
           />
