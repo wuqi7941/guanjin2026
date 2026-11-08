@@ -47,6 +47,16 @@ interface BdcdResponse {
   }
 }
 
+/* BigDataCloud 用 zh 会吐繁体（黃浦區），统一成简体，纸墨排版才顺 */
+function simplify(s: string): string {
+  const map: Record<string, string> = {
+    黃: '黄', 區: '区', 縣: '县', 臺: '台', 灣: '湾', 滬: '沪', 廣: '广', 東: '东',
+    寧: '宁', 蘇: '苏', 陝: '陕', 龍: '龙', 鳳: '凤', 陽: '阳', 陰: '阴', 鎮: '镇',
+    鄉: '乡', 橋: '桥', 門: '门', 開: '开', 關: '关', 雲: '云', 慶: '庆', 瀋: '沈',
+  }
+  return s.replace(/[黃區縣臺灣滬廣東寧蘇陝龍鳳陽陰鎮鄉橋門開關雲慶瀋]/g, (c) => map[c] ?? c)
+}
+
 async function countyOf(lat: number, lon: number): Promise<string> {
   const r = await fetchWithTimeout(
     `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&localityLanguage=zh`,
@@ -62,7 +72,7 @@ async function countyOf(lat: number, lon: number): Promise<string> {
       .sort((a, b) => (b.adminLevel ?? 0) - (a.adminLevel ?? 0))[0]?.name
     const pick = (d.locality || deepest || '').trim()
     /* 只认中文地名：把英文市名硬塞进中文句子，比不写还怪 */
-    return /[\u4e00-\u9fff]/.test(pick) ? pick : ''
+    return /[\u4e00-\u9fff]/.test(pick) ? simplify(pick) : ''
   } catch {
     return ''
   }
@@ -95,17 +105,36 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response | nul
 }
 
 export const onRequestGet: PagesFunction = async ({ request }) => {
+  const url = new URL(request.url)
+  const qLat = Number(url.searchParams.get('lat'))
+  const qLon = Number(url.searchParams.get('lon'))
+  const place = (url.searchParams.get('place') || '').trim().slice(0, 24)
+  const hasCoords =
+    url.searchParams.has('lat') &&
+    url.searchParams.has('lon') &&
+    Number.isFinite(qLat) &&
+    Number.isFinite(qLon) &&
+    Math.abs(qLat) <= 90 &&
+    Math.abs(qLon) <= 180
+
   const cf = (request as Request & { cf?: CfGeo }).cf
-  const lat = Number(cf?.latitude)
-  const lon = Number(cf?.longitude)
+  const ipLat = Number(cf?.latitude)
+  const ipLon = Number(cf?.longitude)
+  const lat = hasCoords ? qLat : ipLat
+  const lon = hasCoords ? qLon : ipLon
   /* 本地 dev / 边缘没给地理信息时不猜城市，直接降级 */
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
     return json({ ok: false, reason: 'no-geo' })
   }
 
+  /* IP 出口定位会被代理 / 运营商 NAT 带偏（人在广西，出口可能在江苏），
+     所以只有「浏览器已授权定位」或「手动指定地区」才显示地名。
+     纯 IP 回退只给温度，句子说「你那边」，绝不报一个错的区县。 */
+  const geoSource = hasCoords ? (place ? 'manual' : 'coords') : 'ip'
+  const displayPlace = place ? simplify(place) : ''
   const q = `latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}`
-  /* 地名反查与天气查询并行，别让县级精度把首句多拖 4 秒 */
-  const countyPromise = countyOf(lat, lon)
+  /* 地名反查与天气查询并行；手动指定时不用反查，IP 回退时不反查 */
+  const countyPromise = place || !hasCoords ? Promise.resolve('') : countyOf(lat, lon)
   const primary = await fetchWithTimeout(
     `https://api.open-meteo.com/v1/forecast?${q}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1`,
     4500,
@@ -119,6 +148,8 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
           ok: true,
           city: cf?.city ?? '',
           county: await countyPromise,
+          place: displayPlace || (await countyPromise),
+          geoSource,
           temp: cur.temperature_2m,
           feels: typeof cur.apparent_temperature === 'number' ? cur.apparent_temperature : cur.temperature_2m,
           code: typeof cur.weather_code === 'number' ? cur.weather_code : 0,
@@ -145,6 +176,8 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
           ok: true,
           city: cf?.city ?? '',
           county: await countyPromise,
+          place: displayPlace || (await countyPromise),
+          geoSource,
           temp,
           feels: Number.isFinite(feels) ? feels : temp,
           min: Number(d.weather?.[0]?.mintempC) || undefined,

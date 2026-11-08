@@ -4,6 +4,10 @@
 
 export interface WeatherData {
   ok: boolean
+  /* 手动指定或浏览器定位反查出的可信地名 */
+  place?: string
+  /* ip = 只用出口 IP（不显示地名）；coords / manual = 地名可信 */
+  geoSource?: 'ip' | 'coords' | 'manual' | string
   county?: string
   city?: string
   temp?: number
@@ -56,6 +60,12 @@ const CITY_CN: Record<string, string> = {
 }
 
 function placeOf(d: WeatherData): string {
+  /* 自己指定的地名最可信，优先用 */
+  const manual = typeof d.place === 'string' ? d.place.trim() : ''
+  if (manual && /[\u4e00-\u9fff]/.test(manual)) return manual.slice(0, 12)
+  /* 出口 IP 定位会被代理 / NAT 带偏（人在广西，出口在江苏）。
+     拿不到可信坐标就一律说「你那边」，绝不报一个错的区县。 */
+  if (d.geoSource !== 'coords' && d.geoSource !== 'manual') return '你那边'
   const county = typeof d.county === 'string' ? d.county.trim() : ''
   if (county && /[\u4e00-\u9fff]/.test(county)) return county.slice(0, 12)
   if (!d.city) return '你那边'

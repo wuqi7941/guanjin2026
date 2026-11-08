@@ -58,7 +58,21 @@ export function Typewriter({
   const active = userText !== null
 
   /* 离开视口：暂停打字循环，避免空转 setState（滚动回来自动恢复） */
-  const { ref: rootRef, inView } = useInView<HTMLSpanElement>({ once: false, threshold: 0.1 })
+  const { ref: rootRef, inView: observedInView } = useInView<HTMLSpanElement>({ once: false, threshold: 0.1 })
+  /* 桌面端偶尔拿不到首帧的 IntersectionObserver 回调（部分浏览器/省电设置），
+     那样打字机会永远卡在第一句。1.2 秒内没观察到就默认可见。 */
+  const [bootVisible, setBootVisible] = useState(false)
+  const seenRef = useRef(false)
+  useEffect(() => {
+    if (observedInView) seenRef.current = true
+  }, [observedInView])
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      if (!seenRef.current) setBootVisible(true)
+    }, 1200)
+    return () => window.clearTimeout(t)
+  }, [])
+  const inView = observedInView || bootVisible
 
   /* 目标句序列：回应句 > 静息句 > 正常轮播 */
   const effectiveTexts = useMemo(() => {
@@ -179,13 +193,24 @@ export function Typewriter({
     setIsDeleting(true)
   }, [priority])
 
+  /* 减动用户：不逐字打，但句子照样一句句换——
+     之前这里只铺第一句就 return，等于把「减少动态效果」变成了「只看得到第一句」。 */
+  useEffect(() => {
+    if (!reduce) return
+    setDisplayText(effectiveTexts[currentIndex % Math.max(1, effectiveTexts.length)] ?? '')
+  }, [reduce, effectiveTexts, currentIndex])
+
+  useEffect(() => {
+    if (!reduce || !inView || active) return
+    const t = window.setTimeout(() => {
+      setCurrentIndex((i) => (i + 1) % Math.max(1, effectiveTexts.length))
+    }, pauseDuration + 1400)
+    return () => window.clearTimeout(t)
+  }, [reduce, inView, active, effectiveTexts, currentIndex, pauseDuration])
+
   /* —— 轮播打字状态机 —— */
   useEffect(() => {
-    if (reduce) {
-      /* 减动用户不打字机动画，但静息句/深夜句/回应句照样要看见——直接整句铺上去 */
-      setDisplayText(effectiveTexts[0] ?? '')
-      return
-    }
+    if (reduce) return
     if (!inView) return
     if (active) return
     const currentText = effectiveTexts[currentIndex % effectiveTexts.length]

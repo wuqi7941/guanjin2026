@@ -11,6 +11,7 @@ import { ArrowDown } from 'lucide-react'
 import { useIdle } from '@/hooks/useIdle'
 import { useParallax } from '@/hooks/useParallax'
 import { useWeatherLine } from '@/hooks/useWeather'
+import { WeatherPlace } from './WeatherPlace'
 import { collectEgg, isNightNow } from '@/lib/eggs'
 import { chime } from '@/lib/sound'
 import {
@@ -73,7 +74,7 @@ export function Hero() {
 
   /* 天气句异步到达时只插在时段句后面，不重洗随机队列——
      否则一次 fetch 就会把整轮句子换掉，正在打的字也要重来。 */
-  const weatherLine = useWeatherLine()
+  const { line: weatherLine, place: weatherPlace, setPlace: setWeatherPlace } = useWeatherLine()
   const texts = useMemo(
     () => (weatherLine ? [baseTexts[0], weatherLine, ...baseTexts.slice(1)] : baseTexts),
     [baseTexts, weatherLine],
@@ -189,6 +190,8 @@ export function Hero() {
               pauseDuration={2400}
             />
           </m.div>
+
+          <WeatherPlace place={weatherPlace} onSet={setWeatherPlace} />
 
           <m.div
             initial={{ opacity: 0, y: 20 }}

@@ -197,6 +197,17 @@ check(
   '统计页两个主框进产物',
 )
 
+/* ── 11. 地区纠偏与打字机轮播 ── */
+check(srcHas('functions/api/geo.ts') && srcHas('components/WeatherPlace.tsx'), '地名查询端点与地区纠正组件存在')
+const weatherSrc = fs.readFileSync(path.join(ROOT, 'functions/api/weather.ts'), 'utf8')
+check(weatherSrc.includes('geoSource') && weatherSrc.includes("'ip'"), '天气端点区分定位来源')
+const twSrc = fs.readFileSync(path.join(ROOT, 'components/Typewriter.tsx'), 'utf8')
+check(twSrc.includes('bootVisible') && twSrc.includes('pauseDuration + 1400'), '打字机有视口兜底与减动轮播')
+check(
+  bundle.includes('地区不对？改一下') || htmls.some((h) => read(h).includes('地区不对？改一下')),
+  '地区入口进产物',
+)
+
 /* ── 汇总 ── */
 console.log(`\n静态产物自检：${all.length} 个文件 / HTML ${htmls.length} 页 / JS-CSS ${jsCss.length} 个`)
 for (const p of passes) console.log('  ✓ ' + p)
