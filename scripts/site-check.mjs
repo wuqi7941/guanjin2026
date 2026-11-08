@@ -163,6 +163,29 @@ const css = jsCss.filter((f) => f.endsWith('.css')).map(read).join('\n')
 check(css.includes('100vh') && css.includes('100dvh'), 'CSS 有 vh → dvh 兜底')
 check(/background:\s*var\(--surface-1\)/.test(css), 'CSS 有 color-mix 背景兜底')
 
+/* ── 8. 天气端点与卡片圆角一致性 ── */
+const srcHas = (p) => fs.existsSync(path.join(ROOT, p))
+check(srcHas('functions/api/weather.ts'), '天气 Functions 端点存在')
+check(srcHas('lib/weather.ts') && srcHas('hooks/useWeather.ts'), '天气文案与前端 hook 存在')
+check(bundle.includes('冷得实在') && bundle.includes('带把伞'), '天气文案进产物')
+check(css.includes('var(--radius-md)'), '产物含 3px 纸墨圆角变量')
+check(!/rounded-2xl/.test(css) && !/rounded-xl/.test(css), '产物不再含 12/16px 大圆角类')
+
+/* ── 9. 访问统计与隐藏页 ── */
+const weatherFn = fs.readFileSync(path.join(ROOT, 'functions/api/weather.ts'), 'utf8')
+check(weatherFn.includes('bigdatacloud'), '天气端点有县级地名反查')
+check(srcHas('functions/api/visit.ts') && srcHas('components/VisitTracker.tsx'), '访问统计端点与埋点存在')
+check(srcHas('app/stats/page.tsx') && srcHas('components/StatsClient.tsx'), '统计页存在')
+check(
+  bundle.includes('zmjkk') && (bundle.includes('来过的人') || htmls.some((h) => read(h).includes('来过的人'))),
+  '暗门与统计页进产物',
+)
+const sm = read('sitemap.xml')
+check(!sm.includes('/stats/') && !sm.includes('/eggs/'), '隐藏页不在 sitemap')
+const rb = read('robots.txt')
+check(rb.includes('/eggs/') && rb.includes('/stats/'), 'robots 排除隐藏页')
+check(htmls.some((h) => h.startsWith('stats/')), '统计页已静态导出')
+
 /* ── 汇总 ── */
 console.log(`\n静态产物自检：${all.length} 个文件 / HTML ${htmls.length} 页 / JS-CSS ${jsCss.length} 个`)
 for (const p of passes) console.log('  ✓ ' + p)

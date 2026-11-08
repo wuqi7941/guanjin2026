@@ -135,7 +135,7 @@ export function Footer() {
                         <span className={got ? 'text-[var(--ink-muted)]' : 'text-[var(--ink-tertiary)]'}>
                           {got ? e.label : '？'}
                         </span>
-                        <span className="egg-hint text-[10px] text-[var(--ink-tertiary)] opacity-60">{e.hint}</span>
+                        {/* 不列触发线索：暗语是撞见的，不是照着说明书找的 */}
                       </li>
                     )
                   })}

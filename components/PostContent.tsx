@@ -300,7 +300,7 @@ export function PostContent({ post, prev, next, num }: PostContentProps) {
           /* 长目录（7 节以上，全站 soul-17=8 节、piano-06=7 节）默认折叠：
              手机上先滚过七八节标题才见正文，太亏。阈值对齐过全站实际分布。 */
           toc.length > 6 ? (
-            <details className="mb-12 p-6 sm:p-7 rounded-2xl card-static max-w-[720px] mx-auto group">
+            <details className="mb-12 p-6 sm:p-7 rounded-[var(--radius-md)] card-static max-w-[720px] mx-auto group">
               <summary className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.2em] text-[var(--ink-subtle)] cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
                 <ListTree className="w-3.5 h-3.5" />
                 目录 · 共 {toc.length} 节
@@ -325,7 +325,7 @@ export function PostContent({ post, prev, next, num }: PostContentProps) {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.1, ease: EASE }}
-              className="mb-12 p-6 sm:p-7 rounded-2xl card-static max-w-[720px] mx-auto"
+              className="mb-12 p-6 sm:p-7 rounded-[var(--radius-md)] card-static max-w-[720px] mx-auto"
               aria-label="文章目录"
             >
               <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.2em] text-[var(--ink-subtle)] mb-4">
@@ -357,7 +357,7 @@ export function PostContent({ post, prev, next, num }: PostContentProps) {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
-          className={`${isLong ? 'p-8 sm:p-12' : 'p-7 sm:p-10'} rounded-2xl card-static`}
+          className={`${isLong ? 'p-8 sm:p-12' : 'p-7 sm:p-10'} rounded-[var(--radius-md)] card-static`}
         >
           <MarkdownRenderer content={post.content} variant={isLong ? 'novel' : 'default'} />
         </m.div>
@@ -426,7 +426,7 @@ export function PostContent({ post, prev, next, num }: PostContentProps) {
               <Link
                 href={`/blog/${prev.slug}/`}
                 data-flip
-                className="group p-5 rounded-2xl card-static hover:border-[var(--hairline-strong)] transition-colors"
+                className="group p-5 rounded-[var(--radius-md)] card-static hover:border-[var(--hairline-strong)] transition-colors"
               >
                 <span className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-[var(--ink-subtle)] mb-3">
                   <ArrowLeft className="w-3.5 h-3.5" />
@@ -445,7 +445,7 @@ export function PostContent({ post, prev, next, num }: PostContentProps) {
               <Link
                 href={`/blog/${next.slug}/`}
                 data-flip
-                className="group p-5 rounded-2xl card-static hover:border-[var(--hairline-strong)] transition-colors text-right"
+                className="group p-5 rounded-[var(--radius-md)] card-static hover:border-[var(--hairline-strong)] transition-colors text-right"
               >
                 <span className="flex items-center justify-end gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-[var(--ink-subtle)] mb-3">
                   下一篇                  <ArrowRight className="w-3.5 h-3.5" />

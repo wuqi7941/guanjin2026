@@ -389,7 +389,7 @@ export function Comments({ slug }: { slug: string }) {
       )}
 
       <m.div {...anim}>
-        <div className="rounded-2xl card-static p-5 sm:p-6 min-h-[180px]">
+        <div className="rounded-[var(--radius-md)] card-static p-5 sm:p-6 min-h-[180px]">
           <form
             onSubmit={(e) => {
               e.preventDefault()
@@ -420,7 +420,7 @@ export function Comments({ slug }: { slug: string }) {
                       aria-checked={picked}
                       aria-label={`头像：${a.emoji}`}
                       onClick={() => commitAvatar(i)}
-                      className={`w-10 h-10 grid place-items-center rounded-xl text-lg transition-all duration-200 active:scale-[0.94] ${
+                      className={`w-10 h-10 grid place-items-center rounded-[var(--radius-md)] text-lg transition-all duration-200 active:scale-[0.94] ${
                         picked
                           ? 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface-1)] scale-105'
                           : 'opacity-70 hover:opacity-100 hover:scale-105'
@@ -445,7 +445,7 @@ export function Comments({ slug }: { slug: string }) {
                 placeholder="留空就叫匿名"
                 autoComplete="nickname"
                 /* 手机端 16px：更小的字号会让 iOS 聚焦时自动放大页面 */
-                className="w-40 px-3.5 py-2 rounded-xl text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
+                className="w-40 px-3.5 py-2 rounded-[var(--radius-md)] text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
               />
               <span className="text-[11px] text-[var(--ink-tertiary)]">名字可留空，头像必须挑一个</span>
             </div>
@@ -466,7 +466,7 @@ export function Comments({ slug }: { slug: string }) {
               rows={3}
               maxLength={500}
               placeholder="写点什么… 别太客气。（Ctrl+Enter 发送）"
-              className="px-3.5 py-3 rounded-xl text-[16px] sm:text-sm leading-relaxed bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none resize-y transition-colors duration-200 focus:border-[var(--accent)]"
+              className="px-3.5 py-3 rounded-[var(--radius-md)] text-[16px] sm:text-sm leading-relaxed bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none resize-y transition-colors duration-200 focus:border-[var(--accent)]"
             />
             {text.length > 420 && (
               <p
@@ -509,7 +509,7 @@ export function Comments({ slug }: { slug: string }) {
             {items.length === 0 && !loading && (
               <m.li
                 {...anim}
-                className="px-5 py-8 text-center text-sm text-[var(--ink-subtle)] rounded-2xl border border-dashed border-[var(--hairline)]"
+                className="px-5 py-8 text-center text-sm text-[var(--ink-subtle)] rounded-[var(--radius-md)] border border-dashed border-[var(--hairline)]"
               >
                 {emptyState}
               </m.li>
@@ -524,14 +524,14 @@ export function Comments({ slug }: { slug: string }) {
                 <m.li key={uid} layout={reduce ? undefined : true} {...anim} className="flex gap-3.5">
                   <span
                     aria-hidden
-                    className="flex-none w-10 h-10 grid place-items-center rounded-xl text-lg shadow-sm"
+                    className="flex-none w-10 h-10 grid place-items-center rounded-[var(--radius-md)] text-lg shadow-sm"
                     style={{ background: av.color, boxShadow: `0 4px 14px -6px ${av.color}` }}
                   >
                     {av.emoji}
                   </span>
                   <div className="flex-1 min-w-0">
                     <div
-                      className="cmt-paper rounded-xl rounded-tl-[4px] card-static px-4 py-3"
+                      className="cmt-paper rounded-[var(--radius-md)] rounded-tl-[4px] card-static px-4 py-3"
                       style={{ ['--paper-age' as string]: paperAgeOf(c.d).toFixed(3) }}
                     >
                           <div className="flex items-center gap-3 mb-1.5">

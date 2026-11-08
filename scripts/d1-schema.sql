@@ -13,3 +13,15 @@ CREATE TABLE IF NOT EXISTS comments (
 );
 CREATE INDEX IF NOT EXISTS idx_comments_slug ON comments(slug, created_at);
 CREATE INDEX IF NOT EXISTS idx_comments_ip ON comments(ip_hash, created_at);
+
+-- 访问量：每次页面进入记一笔。不存原始 IP，ip_hash 只用于 60 秒防刷
+-- day 是北京时间（UTC+8）的日历日，凌晨不会算到前一天
+CREATE TABLE IF NOT EXISTS visits (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts INTEGER NOT NULL,
+  day TEXT NOT NULL,
+  path TEXT NOT NULL,
+  ip_hash TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_visits_day ON visits(day);
+CREATE INDEX IF NOT EXISTS idx_visits_ip ON visits(ip_hash, ts);

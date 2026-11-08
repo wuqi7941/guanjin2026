@@ -16,8 +16,14 @@ interface Doc {
   body: string
 }
 
-/* 暗门口令：搜索框里敲出这三个字，进 /eggs/ 暗语全册 */
-const DOOR = '观烬'
+/* 暗门口令：不写在任何页面、页脚或控制台上，只有自己敲出来才到得了。
+   「观烬」同时是复制锁的口令，这层保留不动。 */
+const HOME_DOOR = '观烬'
+const DOORS: Record<string, { href: string; label: string; sub: string }> = {
+  '观烬': { href: '/eggs/', label: '门开了', sub: '暗语全册' },
+  zmjkk: { href: '/stats/', label: '门开了', sub: '来过的人' },
+}
+const doorOf = (q: string) => DOORS[q.trim().toLowerCase()] ?? null
 
 /* 索引只在第一次打开搜索时下载，之后驻留内存（约 200KB） */
 let cache: Doc[] | null = null
@@ -123,6 +129,7 @@ export function SearchDialog() {
   const panelRef = useRef<HTMLDivElement>(null)
 
   const hits = useMemo(() => search(docs, q), [docs, q])
+  const door = doorOf(q)
 
   /* 暗语「三次」：一分钟里提交了三次搜索，都没找到。
      只认 Enter 提交，不认输入过程中的每一个字符。 */
@@ -185,11 +192,12 @@ export function SearchDialog() {
     [goPath, q],
   )
 
-  /* 暗门：在搜索框敲出「观烬」——三个字敲完就自己开，同时解开复制锁 */
+  /* 暗门：敲完整口令就自己开；「观烬」同时解开复制锁 */
   useEffect(() => {
-    if (q.trim() !== DOOR) return
-    unlockCopy()
-    const t = window.setTimeout(() => goPath('/eggs/'), 900)
+    const door = doorOf(q)
+    if (!door) return
+    if (q.trim() === HOME_DOOR) unlockCopy()
+    const t = window.setTimeout(() => goPath(door.href), 900)
     return () => window.clearTimeout(t)
   }, [q, goPath])
 
@@ -293,8 +301,9 @@ export function SearchDialog() {
     } else if (e.key === 'Enter') {
       e.preventDefault()
       noteMiss()
-      if (q.trim() === DOOR) {
-        goPath('/eggs/')
+      const door = doorOf(q)
+      if (door) {
+        goPath(door.href)
         return
       }
       const hit = hits[active]
@@ -354,14 +363,14 @@ export function SearchDialog() {
             </div>
 
             <div ref={listRef} className="search-results">
-              {q.trim() === DOOR ? (
-                <button type="button" className="search-door" onClick={() => goPath('/eggs/')}>
+              {door ? (
+                <button type="button" className="search-door" onClick={() => goPath(door.href)}>
                   <span className="search-door-mark" aria-hidden>
                     烬
                   </span>
                   <span className="search-door-text">
-                    <span className="search-door-title">门开了</span>
-                    <span className="search-door-sub">暗语全册 · 全部触发方式</span>
+                    <span className="search-door-title">{door.label}</span>
+                    <span className="search-door-sub">{door.sub}</span>
                   </span>
                 </button>
               ) : (
@@ -424,7 +433,7 @@ export function SearchDialog() {
 
             <div className="search-foot">
               <span>
-                {q.trim() === DOOR
+                {door
                   ? '正在进入…'
                   : `${ready ? `${docs.length} 篇索引` : '载入中'}${
                       q.trim() && hits.length > 0 ? ` · ${hits.length} 条结果` : ''

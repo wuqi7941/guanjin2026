@@ -83,7 +83,7 @@ export function EasterEggs() {
     console.log(`%c${ascii}`, 'color:#c4634a;font-weight:bold;font-size:11px;line-height:1.2')
     console.log('%c观烬 · 余烬 EMBERS — 数字花园', 'color:#a1a1aa;font-size:12px;')
     console.log('%c没有烧完的火，就还在烧。', 'color:#71717a;font-size:11px;')
-    console.log('%c试试 ↑↑↓↓←→←→BA，或者连点左上角的「余烬」。', 'color:#52525b;font-size:11px;')
+    /* 不在控制台、页脚或任何页面上写触发方式——撞见才算数 */
 
     let seq = 0
     const onKey = (e: KeyboardEvent) => {

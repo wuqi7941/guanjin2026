@@ -9,6 +9,7 @@ import { SITE } from '@/lib/site'
 import { DeferredWidgets } from '@/components/DeferredWidgets'
 import { PageTransition } from '@/components/PageTransition'
 import { ScrollManager } from '@/components/ScrollManager'
+import { VisitTracker } from '@/components/VisitTracker'
 import { ThemeColorSync } from '@/components/ThemeColorSync'
 import { GlowFollow } from '@/components/GlowFollow'
 import { PaperLight } from '@/components/PaperLight'
@@ -118,6 +119,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <DeferredWidgets />
+          <VisitTracker />
           <PageTransition />
           <ScrollManager />
           <ThemeColorSync />

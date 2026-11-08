@@ -17,7 +17,7 @@ function MpCoverInner({ cover, title, playing }: MpCoverProps) {
   const showImg = cover && !failed
 
   return (
-    <div className="relative aspect-square rounded-2xl overflow-hidden bg-[var(--surface-2)] border border-[var(--hairline)]">
+    <div className="relative aspect-square rounded-[var(--radius-md)] overflow-hidden bg-[var(--surface-2)] border border-[var(--hairline)]">
       {showImg ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

@@ -10,6 +10,7 @@ import { EmberRest } from './hero/EmberRest'
 import { ArrowDown } from 'lucide-react'
 import { useIdle } from '@/hooks/useIdle'
 import { useParallax } from '@/hooks/useParallax'
+import { useWeatherLine } from '@/hooks/useWeather'
 import { collectEgg, isNightNow } from '@/lib/eggs'
 import { chime } from '@/lib/sound'
 import {
@@ -57,7 +58,7 @@ export function Hero() {
   /* 深夜句优先；普通时段先报时，再随机插一句季节句；
      队列尾埋两句「惊喜句」（季节冷知识 / 站内小机关提示）——
      停留够久就会「时不时跳出来」。进站随机一次，轮播期间不再变。 */
-  const texts = useMemo(() => {
+  const baseTexts = useMemo(() => {
     const head = night ? [NIGHT_TYPE_LINE] : phaseLine ? [phaseLine] : []
     const seasonPick = pickRandom(SEASON_TEXTS[seasonOf()], 1)
     const today = new Date()
@@ -69,6 +70,14 @@ export function Hero() {
     return [...head, ...seasonPick, ...HERO_TEXTS, ...surprise]
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [night, phaseLine])
+
+  /* 天气句异步到达时只插在时段句后面，不重洗随机队列——
+     否则一次 fetch 就会把整轮句子换掉，正在打的字也要重来。 */
+  const weatherLine = useWeatherLine()
+  const texts = useMemo(
+    () => (weatherLine ? [baseTexts[0], weatherLine, ...baseTexts.slice(1)] : baseTexts),
+    [baseTexts, weatherLine],
+  )
 
   /* 打字机触发词命中：收集「火苗」+ 唤一阵叶子雨 */
   const onTypeTrigger = useCallback(() => {

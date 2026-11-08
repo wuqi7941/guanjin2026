@@ -44,7 +44,7 @@ export function AnniversaryStrip({ posts }: AnniversaryStripProps) {
       initial={reduce ? undefined : { opacity: 0, y: 12 }}
       animate={reduce ? undefined : { opacity: 1, y: 0 }}
       transition={{ duration: 0.7, delay: 0.9, ease: EASE }}
-      className="mb-10 px-5 py-4 rounded-2xl card-static flex flex-wrap items-baseline gap-x-4 gap-y-1"
+      className="mb-10 px-5 py-4 rounded-[var(--radius-md)] card-static flex flex-wrap items-baseline gap-x-4 gap-y-1"
     >
       <span className="text-[10px] font-mono tracking-[0.2em] text-[var(--accent)]">ON THIS DAY</span>
       {hits.map((p) => (
