@@ -2,17 +2,13 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { m, AnimatePresence } from 'framer-motion'
 import { SeasonalWhisper } from './SeasonalWhisper'
-import { EGGS, collectEgg, getCollectedEggs, type EggKey } from '@/lib/eggs'
-import { EASE } from '@/lib/motion'
+import { collectEgg } from '@/lib/eggs'
 
 export function Footer() {
   /* 年份也别在渲染期取：静态导出会把构建年份写死，跨年 hydrate 不一致 */
   const [currentYear, setCurrentYear] = useState<number | null>(null)
   useEffect(() => setCurrentYear(new Date().getFullYear()), [])
-  const [eggs, setEggs] = useState<EggKey[]>([])
-  const [eggsOpen, setEggsOpen] = useState(false)
 
   /* 彩蛋「未冷」：连点那句 BURNED, STILL WARM. 三次 */
   const warmTaps = useRef(0)
@@ -31,13 +27,6 @@ export function Footer() {
     }
   }
   useEffect(() => () => clearTimeout(warmTimer.current), [])
-
-  useEffect(() => {
-    setEggs(getCollectedEggs())
-    const onEgg = () => setEggs(getCollectedEggs())
-    window.addEventListener('embers-egg', onEgg)
-    return () => window.removeEventListener('embers-egg', onEgg)
-  }, [])
 
   return (
     <footer className="relative py-14 px-6 overflow-hidden">
@@ -105,45 +94,6 @@ export function Footer() {
 
         <SeasonalWhisper />
 
-        {/* 彩蛋收集册：发现过至少一枚暗语才浮现（纯本地，未集项给线索） */}
-        {eggs.length > 0 && (
-          <div className="mt-5 flex flex-col items-center gap-3 no-print">
-            <button
-              type="button"
-              onClick={() => setEggsOpen((v) => !v)}
-              aria-expanded={eggsOpen}
-              className="text-[11px] font-mono tracking-[0.22em] text-[var(--ink-tertiary)] hover:text-[var(--accent)] transition-colors select-none"
-            >
-              暗语 · 已集 {eggs.length}/{EGGS.length} {eggsOpen ? '▴' : '▾'}
-            </button>
-            <AnimatePresence>
-              {eggsOpen && (
-                <m.ul
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 4 }}
-                  transition={{ duration: 0.25, ease: EASE }}
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2.5 text-left"
-                >
-                  {EGGS.map((e) => {
-                    const got = eggs.includes(e.key)
-                    return (
-                      <li key={e.key} className="flex items-baseline gap-2 text-[11px] font-mono">
-                        <span aria-hidden className={got ? 'text-[var(--accent)]' : 'text-[var(--ink-tertiary)]'}>
-                          {got ? '●' : '○'}
-                        </span>
-                        <span className={got ? 'text-[var(--ink-muted)]' : 'text-[var(--ink-tertiary)]'}>
-                          {got ? e.label : '？'}
-                        </span>
-                        {/* 不列触发线索：暗语是撞见的，不是照着说明书找的 */}
-                      </li>
-                    )
-                  })}
-                </m.ul>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
       </div>
     </footer>
   )

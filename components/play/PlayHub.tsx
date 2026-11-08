@@ -537,34 +537,40 @@ export function PlayHub() {
               把大师给的时辰换算回北京时间再选即可。
             </p>
             <div className="flex flex-col gap-4">
-              <label htmlFor="pillar-date" className="text-[11px] font-mono text-[var(--ink-tertiary)]">
-                公历生日
-              </label>
-              <input
-                id="pillar-date"
-                type="date"
-                value={birth}
-                min="1990-01-01"
-                max={today}
-                onChange={(e) => setBirth(e.target.value)}
-                className="px-4 py-3 rounded-[var(--radius-md)] text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] outline-none transition-colors duration-200 focus:border-[var(--accent)] max-w-xs"
-              />
-              <label htmlFor="pillar-hour" className="text-[11px] font-mono text-[var(--ink-tertiary)]">
-                出生时辰（可选，用于时柱）
-              </label>
-              <select
-                id="pillar-hour"
-                value={hourIdx}
-                onChange={(e) => setHourIdx(Number(e.target.value))}
-                className="px-4 py-3 rounded-[var(--radius-md)] text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] outline-none transition-colors duration-200 focus:border-[var(--accent)] max-w-xs"
-              >
-                <option value={-1}>不知道 / 不说</option>
-                {BRANCH_HOURS.map((b, i) => (
-                  <option key={b.zhi} value={i}>
-                    {b.label}
-                  </option>
-                ))}
-              </select>
+              {/* 日期与下拉没有 placeholder-shown 语义，标签常驻浮起 */}
+              <div className="field max-w-xs">
+                <input
+                  id="pillar-date"
+                  type="date"
+                  value={birth}
+                  min="1990-01-01"
+                  max={today}
+                  onChange={(e) => setBirth(e.target.value)}
+                  placeholder=" "
+                  className="field-input"
+                />
+                <label htmlFor="pillar-date" className="field-label is-static">
+                  公历生日
+                </label>
+              </div>
+              <div className="field max-w-xs">
+                <select
+                  id="pillar-hour"
+                  value={hourIdx}
+                  onChange={(e) => setHourIdx(Number(e.target.value))}
+                  className="field-input"
+                >
+                  <option value={-1}>不知道 / 不说</option>
+                  {BRANCH_HOURS.map((b, i) => (
+                    <option key={b.zhi} value={i}>
+                      {b.label}
+                    </option>
+                  ))}
+                </select>
+                <label htmlFor="pillar-hour" className="field-label is-static">
+                  出生时辰（可选，用于时柱）
+                </label>
+              </div>
               <button
                 type="button"
                 onClick={calcPillar}
@@ -599,22 +605,24 @@ export function PlayHub() {
               数字取余八定卦、余六定动爻；动爻所在的一卦为用，另一卦为体，按五行生克看吉凶。
             </p>
             <div className="flex flex-col gap-4 max-w-sm">
-              <label htmlFor="mh-input" className="text-[11px] font-mono text-[var(--ink-tertiary)]">
-                三个数（空格分开，或连写三位）
-              </label>
-              <input
-                id="mh-input"
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
-                value={mhInput}
-                onChange={(e) => setMhInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') castMeihua()
-                }}
-                placeholder="例如：3 5 7 或 357"
-                className="px-4 py-3 rounded-[var(--radius-md)] text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
-              />
+              <div className="field">
+                <input
+                  id="mh-input"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={mhInput}
+                  onChange={(e) => setMhInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') castMeihua()
+                  }}
+                  placeholder=" "
+                  className="field-input"
+                />
+                <label htmlFor="mh-input" className="field-label">
+                  三个数 · 如 3 5 7 或 357
+                </label>
+              </div>
               {/* 实时解析预览：让用户确认三个数分到了哪 */}
               <p className="text-xs font-mono text-[var(--ink-tertiary)] h-4" aria-live="polite">
                 {mhParsed

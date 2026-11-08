@@ -434,40 +434,43 @@ export function Comments({ slug }: { slug: string }) {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <label htmlFor={`cmt-name-${slug}`} className="text-[11px] font-mono text-[var(--ink-tertiary)]">
-                昵称
-              </label>
-              <input
-                id={`cmt-name-${slug}`}
-                value={name}
-                onChange={(e) => commitName(e.target.value)}
-                maxLength={NAME_MAX}
-                placeholder="留空就叫匿名"
-                autoComplete="nickname"
-                /* 手机端 16px：更小的字号会让 iOS 聚焦时自动放大页面 */
-                className="w-40 px-3.5 py-2 rounded-[var(--radius-md)] text-[16px] sm:text-sm bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
-              />
+              <div className="field w-40">
+                <input
+                  id={`cmt-name-${slug}`}
+                  value={name}
+                  onChange={(e) => commitName(e.target.value)}
+                  maxLength={NAME_MAX}
+                  placeholder=" "
+                  autoComplete="nickname"
+                  className="field-input"
+                />
+                <label htmlFor={`cmt-name-${slug}`} className="field-label">
+                  昵称 · 可留空
+                </label>
+              </div>
               <span className="text-[11px] text-[var(--ink-tertiary)]">名字可留空，头像必须挑一个</span>
             </div>
-            <label htmlFor={`cmt-text-${slug}`} className="sr-only">
-              留言内容
-            </label>
-            <textarea
-              id={`cmt-text-${slug}`}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                /* 桌面：Ctrl/Cmd+Enter 直接发送 */
-                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                  e.preventDefault()
-                  publish()
-                }
-              }}
-              rows={3}
-              maxLength={500}
-              placeholder="写点什么… 别太客气。（Ctrl+Enter 发送）"
-              className="px-3.5 py-3 rounded-[var(--radius-md)] text-[16px] sm:text-sm leading-relaxed bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none resize-y transition-colors duration-200 focus:border-[var(--accent)]"
-            />
+            <div className="field">
+              <textarea
+                id={`cmt-text-${slug}`}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  /* 桌面：Ctrl/Cmd+Enter 直接发送 */
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    e.preventDefault()
+                    publish()
+                  }
+                }}
+                rows={3}
+                maxLength={500}
+                placeholder=" "
+                className="field-input resize-y min-h-[6.5rem]"
+              />
+              <label htmlFor={`cmt-text-${slug}`} className="field-label">
+                写点什么… 别太客气（Ctrl+Enter 发送）
+              </label>
+            </div>
             {text.length > 420 && (
               <p
                 aria-live="polite"
@@ -646,23 +649,25 @@ export function Comments({ slug }: { slug: string }) {
                           }}
                           className="mt-2.5 ml-4 flex gap-2 items-start"
                         >
-                          <label htmlFor={`cmt-reply-${uid}`} className="sr-only">
-                            回复内容
-                          </label>
-                          <input
-                            id={`cmt-reply-${uid}`}
-                            value={replyText}
-                            onChange={(e) => setReplyText(e.target.value)}
-                            onKeyDown={(e) => {
-                              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                                e.preventDefault()
-                                submitReply(uid)
-                              }
-                            }}
-                            maxLength={200}
-                            placeholder="回复…"
-                            className="flex-1 min-w-0 px-3 py-2 rounded-lg text-[16px] sm:text-[13px] bg-[var(--surface-2)] border border-[var(--hairline)] text-[var(--ink)] placeholder:text-[var(--ink-tertiary)] outline-none transition-colors duration-200 focus:border-[var(--accent)]"
-                          />
+                          <div className="field flex-1 min-w-0">
+                            <input
+                              id={`cmt-reply-${uid}`}
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                                  e.preventDefault()
+                                  submitReply(uid)
+                                }
+                              }}
+                              maxLength={200}
+                              placeholder=" "
+                              className="field-input"
+                            />
+                            <label htmlFor={`cmt-reply-${uid}`} className="field-label">
+                              回复…
+                            </label>
+                          </div>
                           <button
                             type="submit"
                             disabled={!replyText.trim()}

@@ -347,16 +347,20 @@ export function SearchDialog() {
             <div className="search-input-row">
               <Search className="w-4 h-4 shrink-0 text-[var(--ink-tertiary)]" aria-hidden />
               <input
+                id="site-search"
                 ref={inputRef}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={onInputKey}
-                placeholder="搜标题、分区、正文…"
+                placeholder=" "
                 className="search-input"
                 aria-label="搜索关键词"
                 autoComplete="off"
                 spellCheck={false}
               />
+              <label htmlFor="site-search" className="field-label search-float">
+                搜标题、分区、正文…
+              </label>
               <button type="button" onClick={closeDialog} className="search-close" aria-label="关闭搜索">
                 <X className="w-4 h-4" />
               </button>

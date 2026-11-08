@@ -91,6 +91,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   const today = await env.COMMENTS_DB.prepare('SELECT COUNT(*) AS n FROM visits WHERE day = ?')
     .bind(beijingDay(now))
     .first<{ n: number }>()
+  /* 「来过的人」：同一 IP 在同一天里多次进入只算一次，跨天算两次。
+     只用不可逆哈希做去重，不还原任何人的身份。 */
+  const unique = await env.COMMENTS_DB.prepare(
+    'SELECT COUNT(*) AS n FROM (SELECT DISTINCT day, ip_hash FROM visits)',
+  ).first<{ n: number }>()
+
   const { results: days } = await env.COMMENTS_DB.prepare(
     'SELECT day, COUNT(*) AS n FROM visits WHERE ts > ? GROUP BY day ORDER BY day ASC',
   )
@@ -103,6 +109,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   return json({
     total: total?.n ?? 0,
     today: today?.n ?? 0,
+    unique: unique?.n ?? 0,
     days: (days ?? []).map((d) => ({ day: d.day, n: d.n })),
     recent: (recent ?? []).map((r) => ({ ts: r.ts, path: r.path })),
   })

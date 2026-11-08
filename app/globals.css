@@ -2227,6 +2227,70 @@ body {
   overflow: hidden;
 }
 
+/* ============ 浮动标签：全站表单统一语言 ============ */
+.field {
+  position: relative;
+  display: block;
+}
+/* 聚焦时左上角浮出一枚朱线，沿用 .acard 的语言；只动 opacity */
+.field::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: -1px;
+  width: 10px;
+  height: 3px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+.field:focus-within::before { opacity: 1; }
+.field-input {
+  width: 100%;
+  padding: 1.5rem 0.9rem 0.55rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 16px; /* iOS 聚焦不自动放大页面 */
+  line-height: 1.45;
+  outline: none;
+}
+@media (min-width: 640px) {
+  .field-input { font-size: 0.875rem; }
+}
+.field-input:focus { border-color: var(--accent); }
+.field-input:disabled { opacity: 0.55; }
+.field-label {
+  position: absolute;
+  left: 0.9rem;
+  top: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  color: var(--ink-tertiary);
+  pointer-events: none;
+  transform-origin: left top;
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+}
+.field-input:focus ~ .field-label,
+.field-input:not(:placeholder-shown) ~ .field-label,
+.field-label.is-static {
+  transform: translateY(-0.72rem) scale(0.8);
+  opacity: 0.9;
+}
+.field-input:focus ~ .field-label { color: var(--accent); }
+/* 搜索框透明无边框，只借这套浮动排版 */
+.search-input-row { position: relative; }
+.search-input { padding-top: 1.05rem; padding-bottom: 0.1rem; }
+.search-float { left: 2.6rem; top: 1rem; }
+.search-input:focus ~ .search-float,
+.search-input:not(:placeholder-shown) ~ .search-float {
+  transform: translateY(-0.7rem) scale(0.82);
+  opacity: 0.85;
+}
+
 .search-input-row {
   display: flex;
   align-items: center;

@@ -186,6 +186,17 @@ const rb = read('robots.txt')
 check(rb.includes('/eggs/') && rb.includes('/stats/'), 'robots 排除隐藏页')
 check(htmls.some((h) => h.startsWith('stats/')), '统计页已静态导出')
 
+/* ── 10. 表单、页脚与统计口径 ── */
+check(css.includes('.field-label') && css.includes('placeholder-shown'), '产物含浮动标签样式')
+const homeHtml = read('index.html')
+check(!homeHtml.includes('已集') && !homeHtml.includes('暗语 ·'), '首页页脚不再出现收集册信息')
+const visitFn = fs.readFileSync(path.join(ROOT, 'functions/api/visit.ts'), 'utf8')
+check(visitFn.includes('DISTINCT day, ip_hash'), '独立访客按 IP + 当日去重')
+check(
+  bundle.includes('OPENED TODAY') || htmls.some((h) => read(h).includes('OPENED TODAY')),
+  '统计页两个主框进产物',
+)
+
 /* ── 汇总 ── */
 console.log(`\n静态产物自检：${all.length} 个文件 / HTML ${htmls.length} 页 / JS-CSS ${jsCss.length} 个`)
 for (const p of passes) console.log('  ✓ ' + p)

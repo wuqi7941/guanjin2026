@@ -15,6 +15,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     items: [
       '打字机多一句当天的温度：冷了添衣，热了喝水，雨雪带伞。',
       '按区县报，查不到就安静跳过；文章页的圆角也收齐了。',
+      '表单换了浮动标签，页脚也收拾干净了。',
     ],
   },
   {
@@ -306,7 +307,7 @@ export const CHANGELOG: ChangelogEntry[] = [
 
 /* 显式版本号：同一天可以有多条记录，靠它区分「看过哪一版」。
    加新条目时手动改这里（消费方是 ChangelogPanel 的首次来访提示）。 */
-export const CHANGELOG_VERSION = '2026-11-08-weather'
+export const CHANGELOG_VERSION = '2026-11-08-weather2'
 
 /* 同一天的多条记录合并为一条展示（一天只一张纸）：
    title 取当天首条，items 顺次拼接。原始 CHANGELOG 保持录入粒度不变。 */
