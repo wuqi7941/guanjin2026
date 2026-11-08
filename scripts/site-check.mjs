@@ -199,6 +199,8 @@ check(
 
 /* ── 11. 地区纠偏与打字机轮播 ── */
 check(srcHas('functions/api/geo.ts') && srcHas('components/WeatherPlace.tsx'), '地名查询端点与地区纠正组件存在')
+const geoSrc = fs.readFileSync(path.join(ROOT, 'functions/api/geo.ts'), 'utf8')
+check(geoSrc.includes('Array.from(new Set') && geoSrc.includes('suffix'), '地名查询支持去后缀重试与县级名补全')
 const weatherSrc = fs.readFileSync(path.join(ROOT, 'functions/api/weather.ts'), 'utf8')
 check(weatherSrc.includes('geoSource') && weatherSrc.includes("'ip'"), '天气端点区分定位来源')
 const twSrc = fs.readFileSync(path.join(ROOT, 'components/Typewriter.tsx'), 'utf8')

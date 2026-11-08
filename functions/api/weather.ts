@@ -146,7 +146,7 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
       if (cur && typeof cur.temperature_2m === 'number' && Number.isFinite(cur.temperature_2m)) {
         return json({
           ok: true,
-          city: cf?.city ?? '',
+          city: hasCoords ? (cf?.city ?? '') : '',
           county: await countyPromise,
           place: displayPlace || (await countyPromise),
           geoSource,
@@ -174,7 +174,7 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
       if (Number.isFinite(temp)) {
         return json({
           ok: true,
-          city: cf?.city ?? '',
+          city: hasCoords ? (cf?.city ?? '') : '',
           county: await countyPromise,
           place: displayPlace || (await countyPromise),
           geoSource,
